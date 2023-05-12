@@ -1,3 +1,4 @@
+from typing import Any
 from .custom_gtg import geographical_threshold_graph_custom
 import networkx as nx
 import numpy as np
@@ -75,6 +76,9 @@ class GTG(BaseGraph):
             self.posi = [self.G.nodes[i]["pos"] for i in range(n_nodes)]
 
         self.w = dict(enumerate(self.G.nodes[i]["weight"] for i in range(self.n_nodes)))
+
+    def __call__(self, *args, **kwds):
+        return self.G
 
     # Modificar la funcion para que o bien guarde en temp o bien muestre en pantalla
     def plot_snapshot(self, w_min, mcs=None, mode="save", *args, **kwargs):
