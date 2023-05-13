@@ -88,9 +88,7 @@ class GTG(BaseGraph):
         dead_nodes = [node for node, weight in self.w.items() if weight < w_min]
 
         node_size = 25 * 200 * (a)
-        node_colors = [            
-            "r" if n in dead_nodes else "royalblue" for n in self.G.nodes
-        ] 
+        node_colors = ["r" if n in dead_nodes else "royalblue" for n in self.G.nodes]
         edge_colors = [
             "r" if (e[0] in dead_nodes or e[1] in dead_nodes) else "black"
             for e in self.G.edges
@@ -140,6 +138,15 @@ class GTG(BaseGraph):
                 opponents[i] = np.random.choice(neighbors)
 
         return opponents
+
+    # Function inspired by cuTradeNet's toLL() function in:
+    # https://github.com/Qsanti/cuTradeNet/blob/e20f29e65bcac448d7fcd17fac45746f90e8538e/cuTradeNet/Models/Utils/GraphManager.py
+    def get_neigbhors_array_gpu(self, *args, **kwargs):
+        """ """
+        neighs = [(list(self.G.neighbors(i))) for i in range(self.n_nodes)]
+        cum_neighs = np.cumsum(np.array([len(x) for x in neighs], dtype=np.int32))
+        neighs = np.hstack(neighs).astype(np.int32)
+        return cum_neighs, neighs
 
 
 # Acá iría la clase del multigraph
