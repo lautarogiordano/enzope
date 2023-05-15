@@ -29,21 +29,19 @@ def k_ys_mcs(n_agents, w, r, mutex, cum_neighs, neighs, wmin, f, rng_states, mcs
             # Assigns tid's opponent to his rand_neigh'th neighbor
             opp = neighs[cum_neighs[tid] + rand_neigh]
 
-            wi = w[tid]
-            wj = w[opp]
 
-            if wi > wmin and wj > wmin:
+            if w[tid] > wmin and w[opp] > wmin:
                 double_lock(mutex, tid, opp)
 
-                dw = min(r[tid] * wi, r[opp] * wj)
+                dw = min(r[tid] * w[tid], r[opp] * w[opp])
 
                 # Compute the probability of winning
-                p = 0.5 + f * abs(wi - wj) / (wi + wj)
+                p = 0.5 + f * abs(w[tid] - w[opp]) / (w[tid] + w[opp])
                 rand = xoroshiro128p_uniform_float32(rng_states, tid)
                 # Determine the winner and loser
                 dw = dw if rand <= p else -dw
-                wi += dw
-                wj -= dw
+                w[tid] += dw
+                w[opp] -= dw
 
                 double_unlock(mutex, tid, opp)
 
