@@ -1,5 +1,5 @@
 from typing import Any
-from .custom_gtg import geographical_threshold_graph_custom
+from custom_gtg import geographical_threshold_graph_custom
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
