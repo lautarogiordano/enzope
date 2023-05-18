@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: enzope
+Version: 0.0.1
+Summary: Agent based modelling in complex networks
+Author-email: Lautaro Giordano <giordanolautaro@gmail.com>
+Project-URL: Homepage, https://github.com/lautarogiordano/enzope
+Project-URL: Bug Tracker, https://github.com/lautarogiordano/enzope/issues
+Keywords: Agent based modelling,complex networks,Yard Sale algorithm,random networks,econophysics
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE

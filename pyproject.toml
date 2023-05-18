@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enzope"
+version = "0.0.1"
+authors = [
+  { name="Lautaro Giordano", email="giordanolautaro@gmail.com" },
+]
+description = "Agent based modelling in complex networks"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+keywords = ["Agent based modelling", "complex networks", "Yard Sale algorithm", "random networks", "econophysics"]
+
+[project.urls]
+"Homepage" = "https://github.com/lautarogiordano/enzope"
+"Bug Tracker" = "https://github.com/lautarogiordano/enzope/issues"
