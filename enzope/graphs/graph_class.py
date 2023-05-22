@@ -1,5 +1,4 @@
-from typing import Any
-from custom_gtg import geographical_threshold_graph_custom
+from .custom_gtg import geographical_threshold_graph_custom
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
@@ -81,13 +80,13 @@ class GTG(BaseGraph):
         return self.G
 
     # Modificar la funcion para que o bien guarde en temp o bien muestre en pantalla
-    def plot_snapshot(self, w_min, mcs=None, mode="save", *args, **kwargs):
+    def plot_snapshot(self, w_min, mcs=None, mode="show", *args, **kwargs):
         # Esto se tiene que escribir mejor
         a = np.array(list(self.w.values()))
 
         dead_nodes = [node for node, weight in self.w.items() if weight < w_min]
 
-        node_size = 25 * 200 * (a)
+        node_size = 25 * (a)
         node_colors = ["r" if n in dead_nodes else "royalblue" for n in self.G.nodes]
         edge_colors = [
             "r" if (e[0] in dead_nodes or e[1] in dead_nodes) else "black"

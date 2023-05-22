@@ -1,2 +1,2 @@
 
-from ..src.graphs import graph_class
+from ..enzope.graphs import graph_class
