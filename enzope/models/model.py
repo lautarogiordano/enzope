@@ -52,24 +52,24 @@ class GPUModel(BaseModel):
         # self.gini = [self.get_gini()]
         # self.n_active = [self.get_actives()]
 
-    def Run(self, steps, tpb, bpg, rng_state):
+    def MCS(self, steps, tpb, bpg, rng_state):
         with cuda.pinned(self.w):
-            self.w_d = cuda.to_device(self.w, stream=self.stream)
-            self.r_d = cuda.to_device(self.r, stream=self.stream)
-            self.m_d = cuda.to_device(self.m, stream=self.stream)
+            w_d = cuda.to_device(self.w, stream=self.stream)
+            r_d = cuda.to_device(self.r, stream=self.stream)
+            m_d = cuda.to_device(self.m, stream=self.stream)
 
             k_ys_mcs[bpg, tpb, self.stream](
                 self.n_agents,
-                self.w_d,
-                self.r_d,
-                self.m_d,
+                w_d,
+                r_d,
+                m_d,
                 self.w_min,
                 self.f,
                 steps,
                 rng_state,
             )
 
-            self.w_d.copy_to_host(self.w, self.stream)
+            w_d.copy_to_host(self.w, self.stream)
         del w_d, r_d, m_d
 
         cuda.synchronize()
@@ -83,7 +83,7 @@ class GPUEnsemble:
         self.bpg = bpg
 
         if self.n_streams == 1:
-            self.streams = cuda.default_stream()
+            self.streams = [cuda.default_stream()]
         else:
             self.streams = [cuda.stream() for _ in range(self.n_streams)]
 
@@ -96,9 +96,9 @@ class GPUEnsemble:
             for _ in range(self.n_streams)
         ]
 
-    def Run(self, steps):
+    def MCS(self, steps):
         for i, (model, rng_state) in enumerate(zip(self.models, self.rng_states)):
-            model.Run(steps, self.tpb, self.bpg, rng_state)
+            model.MCS(steps, self.tpb, self.bpg, rng_state)
 
 
 class CPUModel(BaseModel):
