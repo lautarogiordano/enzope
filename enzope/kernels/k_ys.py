@@ -14,24 +14,24 @@ def k_ys_mcs(n_agents, w, r, mutex, wmin, f, mcs, rng_state):
 
     for t in range(mcs):
         for i in range(tid, n_agents, stride):
-            opp = int(xoroshiro128p_uniform_float32(rng_state, i) * (n_agents))
+            j = int(xoroshiro128p_uniform_float32(rng_state, i) * (n_agents))
 
             # Check if both agents have enough wealth to exchange
-            if opp != i and w[i] > wmin and w[opp] > wmin:
-                double_lock(mutex, i, opp)
+            if j != i and w[i] > wmin and w[j] > wmin:
+                double_lock(mutex, i, j)
 
-                dw = min(r[i] * w[i], r[opp] * w[opp])
+                dw = min(r[i] * w[i], r[j] * w[j])
 
                 # Compute the probability of winning
                 prob_win = xoroshiro128p_uniform_float32(rng_state, i)
-                p = 0.5 + f * (w[opp] - w[i]) / (w[i] + w[opp])
+                p = 0.5 + f * (w[j] - w[i]) / (w[i] + w[j])
                 # Determine the winner and loser
                 dw = dw if prob_win <= p else -dw
 
                 w[i] += dw
-                w[opp] -= dw
+                w[j] -= dw
 
-                double_unlock(mutex, i, opp)
+                double_unlock(mutex, i, j)
 
         cuda.syncthreads()
 
@@ -55,23 +55,23 @@ def k_ys_mcs_graph(
                     xoroshiro128p_uniform_float32(rng_state, i) * (n_neighs[i])
                 )
                 # Assigns i's opponent to his rand_neigh'th neighbor
-                opp = neighs[cum_neighs[i] + rand_neigh]
+                j = neighs[cum_neighs[i] + rand_neigh]
 
                 # Check if both agents have enough wealth to exchange
-                if w[i] > wmin and w[opp] > wmin:
-                    double_lock(mutex, i, opp)
+                if w[i] > wmin and w[j] > wmin:
+                    double_lock(mutex, i, j)
 
-                    dw = min(r[i] * w[i], r[opp] * w[opp])
+                    dw = min(r[i] * w[i], r[j] * w[j])
 
                     # Compute the probability of winning
                     prob_win = xoroshiro128p_uniform_float32(rng_state, i)
-                    p = 0.5 + f * (w[opp] - w[i]) / (w[i] + w[opp])
+                    p = 0.5 + f * (w[j] - w[i]) / (w[i] + w[j])
                     # Determine the winner and loser
                     dw = dw if prob_win <= p else -dw
 
                     w[i] += dw
-                    w[opp] -= dw
+                    w[j] -= dw
 
-                    double_unlock(mutex, i, opp)
+                    double_unlock(mutex, i, j)
 
         cuda.syncthreads()
