@@ -26,6 +26,7 @@ class BaseModel:
             self.update_w = upd_w_every
             self.update_links = upd_graph_every
             self.plot = plot_every
+        ## Esto es para muestrear el calculo del gini
         self.every = save_every
 
 
@@ -45,6 +46,14 @@ class GPUModel(BaseModel):
         else:
             self.w = self.w / (np.sum(self.w))
 
+        # If we have a graph, we need more parameters for the kernel
+        if self.G is not None:
+            (
+                self.n_neighs,
+                self.cum_neighs,
+                self.neighs,
+            ) = self.G.get_neighbors_array_gpu()
+
         self.stream = stream if stream != None else cuda.default_stream()
 
         # self.gini = [self.get_gini()]
@@ -56,16 +65,34 @@ class GPUModel(BaseModel):
             r_d = cuda.to_device(self.r, stream=self.stream)
             m_d = cuda.to_device(self.m, stream=self.stream)
 
-            k_ys_mcs[bpg, tpb, self.stream](
-                self.n_agents,
-                w_d,
-                r_d,
-                m_d,
-                self.w_min,
-                self.f,
-                steps,
-                rng_state,
-            )
+            # No graph -> Mean field kernel
+            if self.G is None:
+                k_ys_mcs[bpg, tpb, self.stream](
+                    self.n_agents,
+                    w_d,
+                    r_d,
+                    m_d,
+                    self.w_min,
+                    self.f,
+                    steps,
+                    rng_state,
+                )
+
+            # If we have a graph we have another kernel
+            else:
+                k_ys_mcs_graph[bpg, tpb, self.stream](
+                    self.n_agents,
+                    w_d,
+                    r_d,
+                    m_d,
+                    self.n_neighs,
+                    self.cum_neighs,
+                    self.neighs,
+                    self.w_min,
+                    self.f,
+                    steps,
+                    rng_state,
+                )
 
             w_d.copy_to_host(self.w, self.stream)
         del w_d, r_d, m_d
@@ -74,11 +101,14 @@ class GPUModel(BaseModel):
 
 
 class GPUEnsemble:
-    def __init__(self, n_models=1, n_agents=1000, tpb=32, bpg=256, **kwargs):
+    def __init__(
+        self, n_models=1, n_agents=1000, tpb=32, bpg=256, graphs=None, **kwargs
+    ):
         self.n_streams = n_models
         self.n_agents = n_agents
         self.tpb = tpb
         self.bpg = bpg
+        self.graphs = graphs
 
         # Creation of GPU arrays
         if self.n_streams == 1:
@@ -86,10 +116,17 @@ class GPUEnsemble:
         else:
             self.streams = [cuda.stream() for _ in range(self.n_streams)]
 
-        self.models = [
-            GPUModel(n_agents=n_agents, stream=stream, **kwargs)
-            for stream in self.streams
-        ]
+        if self.graphs is None:
+            self.models = [
+                GPUModel(n_agents=n_agents, stream=stream, **kwargs)
+                for stream in self.streams
+            ]
+        else:
+            self.models = [
+                GPUModel(n_agents=n_agents, stream=stream, G=self.graphs[i], **kwargs)
+                for i, stream in enumerate(self.streams)
+            ]
+
         self.rng_states = [
             create_xoroshiro128p_states(n_agents, seed=time.time())
             for _ in range(self.n_streams)
@@ -151,7 +188,7 @@ class CPUModel(BaseModel):
             for i, j in enumerate(opps):
                 # Check both agents have w > w_min and node is not isolated
                 if self.w[i] > self.w_min and self.w[j] > self.w_min and j != -1:
-                    # Yard-Sale algorithm 
+                    # Yard-Sale algorithm
                     dw = yard_sale(self.r[i], self.w[i], self.r[j], self.w[j])
 
                     winner = self.choose_winner(i, j)

@@ -80,8 +80,11 @@ class GTG(BaseGraph):
         return self.G
 
     # Modificar la funcion para que o bien guarde en temp o bien muestre en pantalla
-    def plot_snapshot(self, w_min, mcs=None, mode="show", *args, **kwargs):
+    def plot_snapshot(self, w_min, new_w=None, mcs=None, mode="show", *args, **kwargs):
         # Esto se tiene que escribir mejor
+        if new_w is not None:
+            self.update_weights(new_w)
+
         a = np.array(list(self.w.values()))
 
         dead_nodes = [node for node, weight in self.w.items() if weight < w_min]
@@ -140,12 +143,13 @@ class GTG(BaseGraph):
 
     # Function inspired by cuTradeNet's toLL() function in:
     # https://github.com/Qsanti/cuTradeNet/blob/e20f29e65bcac448d7fcd17fac45746f90e8538e/cuTradeNet/Models/Utils/GraphManager.py
-    def get_neigbhors_array_gpu(self, *args, **kwargs):
+    def get_neighbors_array_gpu(self, *args, **kwargs):
         """ """
         neighs = [(list(self.G.neighbors(i))) for i in range(self.n_nodes)]
-        cum_neighs = np.cumsum(np.array([len(x) for x in neighs], dtype=np.int32))
+        n_neighs = np.array([len(x) for x in neighs], dtype=np.int32)
+        cum_neighs = np.cumsum(n_neighs)
         neighs = np.hstack(neighs).astype(np.int32)
-        return cum_neighs, neighs
+        return n_neighs, cum_neighs, neighs
 
 
 # Acá iría la clase del multigraph
