@@ -1,2 +1,7 @@
+import numpy as np
 
-from ..enzope.graphs import graph_class
+w = [0, 1, 2, 3]
+
+w = np.array(w)
+
+print(np.sum(w))

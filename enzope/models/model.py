@@ -30,9 +30,7 @@ class BaseModel:
 
 
 class GPUModel(BaseModel):
-    def __init__(
-        self, w_0=None, f=0, stream=None, **kwargs
-    ):  # sourcery skip: assign-if-exp
+    def __init__(self, w_0=None, f=0, stream=None, **kwargs):
         super().__init__(**kwargs)
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
@@ -82,6 +80,7 @@ class GPUEnsemble:
         self.tpb = tpb
         self.bpg = bpg
 
+        # Creation of GPU arrays
         if self.n_streams == 1:
             self.streams = [cuda.default_stream()]
         else:
@@ -102,35 +101,38 @@ class GPUEnsemble:
 
 
 class CPUModel(BaseModel):
-    def __init__(self, G=None, w_0=None, **kwargs):
+    def __init__(self, G=None, w_0=None, f=0, **kwargs):
         super().__init__(**kwargs)
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
         self.w = np.random.rand(self.n_agents).astype(np.float32)
         self.r = np.random.rand(self.n_agents).astype(np.float32)
         self.w = w_0 if w_0 is not None else self.w / (np.sum(self.w))
+        self.f = f
         self.G = G if G is not None else None
         # self.gini = [self.get_gini()]
         # self.n_active = [self.get_actives()]
 
     def get_opponents(self):
         if self.G is None:
-            random_array = np.random.randint(0, self.N, self.N)
-            indices = np.arange(0, self.N)
+            random_array = np.random.randint(0, self.n_agents, self.n_agents)
+            indices = np.arange(0, self.n_agents)
             # Create array of random numbers that are not equal to the index
             # If i=j then assign j'=i+1 (j'=0 if i=N-1)
             random_array = np.where(
-                random_array == indices, (random_array + 1) % self.N, random_array
+                random_array == indices,
+                (random_array + 1) % self.n_agents,
+                random_array,
             )
         else:
             random_array = self.G.get_opponents_cpu()
         return random_array
 
     def get_gini(self):
-        w = np.sort(self.n[:, 0])
+        w = np.sort(self.w)
         p_cumsum = np.cumsum(w) / np.sum(w)
-        B = np.sum(p_cumsum) / self.N
-        return 1 + 1 / self.N - 2 * B
+        B = np.sum(p_cumsum) / self.n_agents
+        return 1 + 1 / self.n_agents - 2 * B
 
     def choose_winner(self, i, j):
         p = 0.5 + self.f * ((self.w[j] - self.w[i]) / (self.w[i] + self.w[j]))
@@ -149,6 +151,7 @@ class CPUModel(BaseModel):
             for i, j in enumerate(opps):
                 # Check both agents have w > w_min and node is not isolated
                 if self.w[i] > self.w_min and self.w[j] > self.w_min and j != -1:
+                    # Yard-Sale algorithm 
                     dw = yard_sale(self.r[i], self.w[i], self.r[j], self.w[j])
 
                     winner = self.choose_winner(i, j)
