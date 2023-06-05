@@ -147,9 +147,9 @@ class GTG(BaseGraph):
         """ """
         neighs = [(list(self.G.neighbors(i))) for i in range(self.n_nodes)]
         n_neighs = np.array([len(x) for x in neighs], dtype=np.int32)
-        cum_neighs = np.cumsum(n_neighs)
+        c_neighs = np.cumsum(n_neighs)
         neighs = np.hstack(neighs).astype(np.int32)
-        return n_neighs, cum_neighs, neighs
+        return n_neighs, c_neighs, neighs
 
 
 # Acá iría la clase del multigraph

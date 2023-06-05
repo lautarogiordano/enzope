@@ -50,14 +50,12 @@ class GPUModel(BaseModel):
         if self.G is not None:
             (
                 self.n_neighs,
-                self.cum_neighs,
+                self.c_neighs,
                 self.neighs,
             ) = self.G.get_neighbors_array_gpu()
 
         self.stream = stream if stream != None else cuda.default_stream()
 
-        # self.gini = [self.get_gini()]
-        # self.n_active = [self.get_actives()]
 
     def MCS(self, steps, tpb, bpg, rng_state):
         with cuda.pinned(self.w):
@@ -80,19 +78,25 @@ class GPUModel(BaseModel):
 
             # If we have a graph we have another kernel
             else:
+                n_neighs_d = cuda.to_device(self.n_neighs, stream=self.stream)
+                c_neighs_d = cuda.to_device(self.c_neighs, stream=self.stream)
+                neighs_d = cuda.to_device(self.neighs, stream=self.stream)
+
                 k_ys_mcs_graph[bpg, tpb, self.stream](
                     self.n_agents,
                     w_d,
                     r_d,
                     m_d,
-                    self.n_neighs,
-                    self.cum_neighs,
-                    self.neighs,
+                    n_neighs_d,
+                    c_neighs_d,
+                    neighs_d,
                     self.w_min,
                     self.f,
                     steps,
                     rng_state,
                 )
+
+                del n_neighs_d, c_neighs_d, neighs_d
 
             w_d.copy_to_host(self.w, self.stream)
         del w_d, r_d, m_d
