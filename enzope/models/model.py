@@ -3,9 +3,22 @@ from ..trades.ys import yard_sale
 from ..graphs.graph_class import GTG
 import numpy as np
 import cupy as cp
-from numba import cuda
-from numba.cuda.random import create_xoroshiro128p_states
 import time
+import warnings
+
+from numba import cuda
+from numba.core.errors import (
+    NumbaPerformanceWarning,
+    NumbaDeprecationWarning,
+    NumbaPendingDeprecationWarning,
+)
+
+# Filtro algunos warnings que tira numba
+warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
+warnings.simplefilter("ignore", category=NumbaDeprecationWarning)
+warnings.simplefilter("ignore", category=NumbaPendingDeprecationWarning)
+
+from numba.cuda.random import create_xoroshiro128p_states
 
 
 class BaseModel:
