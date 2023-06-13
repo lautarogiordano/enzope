@@ -126,6 +126,7 @@ class GPUEnsemble:
         self.tpb = tpb
         self.bpg = bpg
         self.graphs = graphs
+        random_seeds = np.random.randint(0, 0xFFFFFFFFFFFFFFFF, size=self.n_streams)
 
         # Creation of GPU arrays
         if self.n_streams == 1:
@@ -145,8 +146,8 @@ class GPUEnsemble:
             ]
 
         self.rng_states = [
-            create_xoroshiro128p_states(n_agents, seed=time.time())
-            for _ in range(self.n_streams)
+            create_xoroshiro128p_states(n_agents, seed=random_seeds[i])
+            for i in range(self.n_streams)
         ]
 
     def MCS(self, steps):
