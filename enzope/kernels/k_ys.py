@@ -39,7 +39,7 @@ def k_ys_mcs(n_agents, w, r, mutex, wmin, f, mcs, rng_state):
 # Yard-Sale kernel in a complex network
 @cuda.jit
 def k_ys_mcs_graph(
-    n_agents, w, r, mutex, n_neighs, cum_neighs, neighs, wmin, f, mcs, rng_state
+    n_agents, w, r, mutex, c_neighs, neighs, wmin, f, mcs, rng_state
 ):
     tid = cuda.grid(1)
     stride = cuda.gridsize(1)
@@ -49,13 +49,15 @@ def k_ys_mcs_graph(
 
     for t in range(mcs):
         for i in range(tid, n_agents, stride):
-            if n_neighs[i] != 0:
+            # c_neighs has N+1 comonents, so i does not over/underflow.
+            n_neighs = c_neighs[i+1] - c_neighs[i]
+            if n_neighs != 0:
                 # Choose random index between 0 and n_neighs - 1
                 rand_neigh = int(
-                    xoroshiro128p_uniform_float32(rng_state, i) * (n_neighs[i])
+                    xoroshiro128p_uniform_float32(rng_state, i) * (n_neighs)
                 )
                 # Assigns i's opponent to his rand_neigh'th neighbor
-                j = neighs[cum_neighs[i] + rand_neigh]
+                j = neighs[c_neighs[i] + rand_neigh]
 
                 # Check if both agents have enough wealth to exchange
                 if w[i] > wmin and w[j] > wmin:

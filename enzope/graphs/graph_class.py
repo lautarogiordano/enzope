@@ -146,10 +146,12 @@ class GTG(BaseGraph):
     def get_neighbors_array_gpu(self, *args, **kwargs):
         """ """
         neighs = [(list(self.G.neighbors(i))) for i in range(self.n_nodes)]
-        n_neighs = np.array([len(x) for x in neighs], dtype=np.int32)
+        n_neighs = [0, [len(x) for x in neighs]]
+        n_neighs = np.array(n_neighs, dtype=np.int32)
+        # c_neighs has N+1 components, first is 0.
         c_neighs = np.cumsum(n_neighs)
         neighs = np.hstack(neighs).astype(np.int32)
-        return n_neighs, c_neighs, neighs
+        return c_neighs, neighs
 
 
 # Acá iría la clase del multigraph

@@ -61,14 +61,9 @@ class GPUModel(BaseModel):
 
         # If we have a graph, we need more parameters for the kernel
         if self.G is not None:
-            (
-                self.n_neighs,
-                self.c_neighs,
-                self.neighs,
-            ) = self.G.get_neighbors_array_gpu()
+            (self.c_neighs, self.neighs) = self.G.get_neighbors_array_gpu()
 
         self.stream = stream if stream != None else cuda.default_stream()
-
 
     def MCS(self, steps, tpb, bpg, rng_state):
         with cuda.pinned(self.w):
@@ -91,7 +86,6 @@ class GPUModel(BaseModel):
 
             # If we have a graph we have another kernel
             else:
-                n_neighs_d = cuda.to_device(self.n_neighs, stream=self.stream)
                 c_neighs_d = cuda.to_device(self.c_neighs, stream=self.stream)
                 neighs_d = cuda.to_device(self.neighs, stream=self.stream)
 
@@ -100,7 +94,6 @@ class GPUModel(BaseModel):
                     w_d,
                     r_d,
                     m_d,
-                    n_neighs_d,
                     c_neighs_d,
                     neighs_d,
                     self.w_min,
@@ -109,7 +102,7 @@ class GPUModel(BaseModel):
                     rng_state,
                 )
 
-                del n_neighs_d, c_neighs_d, neighs_d
+                del c_neighs_d, neighs_d
 
             w_d.copy_to_host(self.w, self.stream)
         del w_d, r_d, m_d
