@@ -1,2 +1,0 @@
-import custom_gtg
-import graph_class

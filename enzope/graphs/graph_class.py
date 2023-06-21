@@ -25,6 +25,7 @@ class BaseGraph:
         self.upd_w = upd_w
         self.upd_graph = upd_graph
         self.upd_plot = upd_plot
+        self.G = None
 
         if plotable:
             self.fig, self.ax = plt.subplots(dpi=150)
@@ -47,7 +48,12 @@ class BaseGraph:
 
     def get_opponents_cpu(self, *args, **kwargs):
         pass
-
+    
+    def get_mean_connectivity(self):
+        pass
+    
+    def get_average_distance(self):
+        pass
 
 class GTG(BaseGraph):
     def __init__(
@@ -80,7 +86,7 @@ class GTG(BaseGraph):
         return self.G
 
     # Modificar la funcion para que o bien guarde en temp o bien muestre en pantalla
-    def plot_snapshot(self, w_min, new_w=None, mcs=None, mode="show", *args, **kwargs):
+    def plot_snapshot(self, w_min=1e-17, new_w=None, mcs=None, mode="show", *args, **kwargs):
         # Esto se tiene que escribir mejor
         if new_w is not None:
             self.update_weights(new_w)
@@ -152,6 +158,15 @@ class GTG(BaseGraph):
         c_neighs = np.cumsum(n_neighs)
         neighs = np.hstack(neighs).astype(np.int32)
         return c_neighs, neighs
+    
+    # Some networkx functions for comfort
+    def get_mean_connectivity(self):
+        return np.mean(list(dict(nx.degree(self.G)).values()))
+    
+    def get_average_distance(self):
+        Gcc = sorted(nx.connected_components(self.G), key=len, reverse=True)
+        G0 = self.G.subgraph(Gcc[0])
+        return nx.average_shortest_path_length(G0)
 
 
 # Acá iría la clase del multigraph
