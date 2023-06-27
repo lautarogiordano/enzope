@@ -23,10 +23,10 @@ def k_ys_mcs(n_agents, w, r, mutex, wmin, f, mcs, rng_state):
                 dw = min(r[i] * w[i], r[j] * w[j])
 
                 # Compute the probability of winning
-                prob_win = xoroshiro128p_uniform_float32(rng_state, i)
-                p = 0.5 + f * (w[j] - w[i]) / (w[i] + w[j])
+                rand_num = xoroshiro128p_uniform_float32(rng_state, i)
+                prob_win_i = 0.5 + f * (w[j] - w[i]) / (w[i] + w[j])
                 # Determine the winner and loser
-                dw = dw if prob_win <= p else -dw
+                dw = dw if rand_num <= prob_win_i else -dw
 
                 w[i] += dw
                 w[j] -= dw
@@ -49,9 +49,9 @@ def k_ys_mcs_graph(
 
     for t in range(mcs):
         for i in range(tid, n_agents, stride):
-            # c_neighs has N+1 comonents, so i does not over/underflow.
+            # c_neighs has N+1 comonents, so i does not overflow.
             n_neighs = c_neighs[i+1] - c_neighs[i]
-            if n_neighs != 0:
+            if n_neighs > 0:
                 # Choose random index between 0 and n_neighs - 1
                 rand_neigh = int(
                     xoroshiro128p_uniform_float32(rng_state, i) * (n_neighs)
@@ -66,10 +66,10 @@ def k_ys_mcs_graph(
                     dw = min(r[i] * w[i], r[j] * w[j])
 
                     # Compute the probability of winning
-                    prob_win = xoroshiro128p_uniform_float32(rng_state, i)
-                    p = 0.5 + f * (w[j] - w[i]) / (w[i] + w[j])
+                    rand_num = xoroshiro128p_uniform_float32(rng_state, i)
+                    prob_win_i = 0.5 + f * (w[j] - w[i]) / (w[i] + w[j])
                     # Determine the winner and loser
-                    dw = dw if prob_win <= p else -dw
+                    dw = dw if rand_num <= prob_win_i else -dw
 
                     w[i] += dw
                     w[j] -= dw
