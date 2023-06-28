@@ -35,10 +35,9 @@ class BaseModel:
         self.n_agents = n_agents
         self.w_min = w_min
         self.G = G
-        if self.G is not None:
-            self.update_w = upd_w_every
-            self.update_links = upd_graph_every
-            self.plot = plot_every
+        self.update_w = upd_w_every
+        self.update_links = upd_graph_every
+        self.plot = plot_every
         ## Esto es para muestrear el calculo del gini
         self.every = save_every
 
@@ -119,7 +118,7 @@ class GPUEnsemble:
         self.tpb = tpb
         self.bpg = bpg
         self.graphs = graphs
-        random_seeds = np.random.randint(0, 0xFFFFFFFFFFFFFFFF, size=self.n_streams)
+        random_seeds = np.random.randint(0, 0x7FFFFFFFFFFFFFFF, size=self.n_streams)
 
         # Creation of GPU arrays
         if self.n_streams == 1:
@@ -190,7 +189,7 @@ class CPUModel(BaseModel):
         """
         Main MC loop
         """
-        for mcs in range(steps):
+        for mcs in range(1, steps):
             if mcs % self.plot == 0:
                 self.G.plot_snapshot(self.w_min, mcs, mode="save")
 
