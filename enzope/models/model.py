@@ -43,8 +43,8 @@ class BaseModel:
 
 
 class GPUModel(BaseModel):
-    def __init__(self, w_0=None, f=0, stream=None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, n_agents=100, w_0=None, f=0, tpb=32, bpg=512, stream=None, **kwargs):
+        super().__init__(n_agents, **kwargs)
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
         self.w = np.random.rand(self.n_agents).astype(np.float32)
@@ -63,12 +63,23 @@ class GPUModel(BaseModel):
             (self.c_neighs, self.neighs) = self.G.get_neighbors_array_gpu()
 
         self.stream = stream if stream != None else cuda.default_stream()
+        self.tpb = tpb
+        self.bpg = bpg
 
-    def MCS(self, steps, tpb, bpg, rng_state):
+    def MCS(self, steps, tpb=None, bpg=None, rng_state=None):
         with cuda.pinned(self.w):
             w_d = cuda.to_device(self.w, stream=self.stream)
             r_d = cuda.to_device(self.r, stream=self.stream)
             m_d = cuda.to_device(self.m, stream=self.stream)
+
+            if tpb is None or bpg is None:
+                tpb = self.tpb
+                bpg = self.bpg
+            
+            if rng_state is None:
+                random_seed = np.random.randint(0, 0x7FFFFFFFFFFFFFFF)
+                rng_state = create_xoroshiro128p_states(self.n_agents, seed=random_seed)
+                 
 
             # No graph -> Mean field kernel
             if self.G is None:
@@ -111,7 +122,7 @@ class GPUModel(BaseModel):
 
 class GPUEnsemble:
     def __init__(
-        self, n_models=1, n_agents=1000, tpb=32, bpg=256, graphs=None, **kwargs
+        self, n_models=1, n_agents=1000, tpb=32, bpg=512, graphs=None, **kwargs
     ):
         self.n_streams = n_models
         self.n_agents = n_agents
@@ -148,8 +159,8 @@ class GPUEnsemble:
 
 
 class CPUModel(BaseModel):
-    def __init__(self, G=None, w_0=None, f=0, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, n_agents=100, G=None, w_0=None, f=0, **kwargs):
+        super().__init__(n_agents, **kwargs)
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
         self.w = np.random.rand(self.n_agents).astype(np.float32)
