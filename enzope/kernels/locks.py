@@ -1,6 +1,5 @@
 from numba import cuda
 
-
 @cuda.jit(device=True)
 def double_lock(mutex, i, j):
     first, second = (i, j) if i < j else (j, i)
