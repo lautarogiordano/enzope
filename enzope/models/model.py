@@ -1,17 +1,19 @@
-from ..kernels.k_ys import *
-from ..trades.ys import yard_sale
-from ..graphs.graph_class import GTG
-import numpy as np
-import cupy as cp
+# from ..kernels.k_ys import *
 import time
 import warnings
 
+import cupy as cp
+import numpy as np
 from numba import cuda
 from numba.core.errors import (
-    NumbaPerformanceWarning,
     NumbaDeprecationWarning,
     NumbaPendingDeprecationWarning,
+    NumbaPerformanceWarning,
 )
+
+from ..graphs.graph_class import GTG
+from ..kernels import k_ys, measures
+from ..trades.ys import yard_sale
 
 # Filtro algunos warnings que tira numba
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
@@ -43,7 +45,9 @@ class BaseModel:
 
 
 class GPUModel(BaseModel):
-    def __init__(self, n_agents=100, w_0=None, f=0, tpb=32, bpg=512, stream=None, **kwargs):
+    def __init__(
+        self, n_agents=100, w_0=None, f=0, tpb=32, bpg=512, stream=None, **kwargs
+    ):
         super().__init__(n_agents, **kwargs)
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
@@ -75,15 +79,14 @@ class GPUModel(BaseModel):
             if tpb is None or bpg is None:
                 tpb = self.tpb
                 bpg = self.bpg
-            
+
             if rng_state is None:
                 random_seed = np.random.randint(0, 0x7FFFFFFFFFFFFFFF)
                 rng_state = create_xoroshiro128p_states(self.n_agents, seed=random_seed)
-                 
 
             # No graph -> Mean field kernel
             if self.G is None:
-                k_ys_mcs[bpg, tpb, self.stream](
+                k_ys.k_ys_mcs[bpg, tpb, self.stream](
                     self.n_agents,
                     w_d,
                     r_d,
@@ -99,7 +102,7 @@ class GPUModel(BaseModel):
                 c_neighs_d = cuda.to_device(self.c_neighs, stream=self.stream)
                 neighs_d = cuda.to_device(self.neighs, stream=self.stream)
 
-                k_ys_mcs_graph[bpg, tpb, self.stream](
+                k_ys.k_ys_mcs_graph[bpg, tpb, self.stream](
                     self.n_agents,
                     w_d,
                     r_d,
@@ -156,6 +159,44 @@ class GPUEnsemble:
     def MCS(self, steps):
         for i, (model, rng_state) in enumerate(zip(self.models, self.rng_states)):
             model.MCS(steps, self.tpb, self.bpg, rng_state)
+
+
+## LA DEJO COMENTADA PORQUE NO ME GUSTA. ESTO VA A SER LENTISIMO YA QUE
+## CADA VEZ QUE CORTO EL KERNEL PARA CALCULAR LOS GINIS BORRO Y COPIO MEMORIA
+## A LO LOCO (SIN CONTAR QUE LLAMAR A UN KERNEL VARIAS VECES YA ES MAS LENTO DE
+## POR SI). PODRIA SOLUCIONARLO MAS FACIL SI ENCONTRARA ALGUNA FORMA DE SORTEAR
+## EL ARRAY W DESDE DENTRO DEL DEVICE.
+# class GPUEnsembleModified(GPUEnsemble):
+#     """
+#     Modified version of GPUEnsemble class that permits the computation of
+#     some measures like the gini index, at the expense of a higher runtime
+#     (10-100x slower).
+#     """
+
+#     def __init__(
+#         self,
+#         gini_every=np.inf,
+#         n_models=1,
+#         n_agents=1000,
+#         tpb=32,
+#         bpg=512,
+#         graphs=None,
+#         **kwargs
+#     ):
+#         super().__init__(n_models, n_agents, tpb, bpg, graphs, **kwargs)
+#         self.gini_every = gini_every
+#         self.ginis = [{} for _ in range(self.n_models)]
+
+#     def MCS(self, steps):
+#         run_steps = self.gini_every
+#         for i in range(steps // run_steps + 1):
+#             for model, rng_state in zip(self.models, self.rng_states):
+#                 # We run the model run_steps times and append the ginis
+#                 model.MCS(run_steps, self.tpb, self.bpg, rng_state)
+#                 # self.ginis[i][t] means the gini of model i at time t 
+#                 self.ginis[model][i * run_steps] = measures.cupy_gini(
+#                     cp.asarray(self.models[model].w)
+#                 )
 
 
 class CPUModel(BaseModel):

@@ -1,8 +1,13 @@
 from numba import cuda
+import cupy as cp
 
-@cuda.jit(device=True)
-def compute_gini(w):
-    pass
+def cupy_gini(w):
+    n = len(w)
+    w_sorted = cp.sort(w)
+    p_cumsum = cp.cumsum(w_sorted) / cp.sum(w)
+    B = cp.sum(p_cumsum) / n
+    return 1 + 1 / n - 2 * B
+
 
 # def get_gini(self):
 #         w = np.sort(self.n[:, 0])
