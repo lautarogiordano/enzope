@@ -57,11 +57,7 @@ class GPUModel(BaseModel):
         self.m = np.zeros((self.n_agents), dtype=np.int32)
         self.f = f
 
-        if w_0 is not None:
-            self.w = w_0
-        else:
-            self.w = self.w / (np.sum(self.w))
-
+        self.w = w_0 if w_0 is not None else self.w / (np.sum(self.w))
         # If we have a graph, we need more parameters for the kernel
         if self.G is not None:
             (self.c_neighs, self.neighs) = self.G.get_neighbors_array_gpu()
@@ -157,7 +153,7 @@ class GPUEnsemble:
         ]
 
     def MCS(self, steps):
-        for i, (model, rng_state) in enumerate(zip(self.models, self.rng_states)):
+        for model, rng_state in zip(self.models, self.rng_states):
             model.MCS(steps, self.tpb, self.bpg, rng_state)
 
     def save_wealths(self, filepath=None):
@@ -165,7 +161,7 @@ class GPUEnsemble:
             raise ValueError("Insert a valid filepath, with path/name")
         else:
             np.save(
-                filepath, np.array([[self.model[i].w] for i in range(self.n_streams)])
+                filepath, np.array([[self.models[i].w] for i in range(self.n_streams)])
             )
 
 
@@ -201,7 +197,7 @@ class GPUEnsemble:
 #             for model, rng_state in zip(self.models, self.rng_states):
 #                 # We run the model run_steps times and append the ginis
 #                 model.MCS(run_steps, self.tpb, self.bpg, rng_state)
-#                 # self.ginis[i][t] means the gini of model i at time t 
+#                 # self.ginis[i][t] means the gini of model i at time t
 #                 self.ginis[model][i * run_steps] = measures.cupy_gini(
 #                     cp.asarray(self.models[model].w)
 #                 )
