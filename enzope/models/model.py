@@ -160,6 +160,14 @@ class GPUEnsemble:
         for i, (model, rng_state) in enumerate(zip(self.models, self.rng_states)):
             model.MCS(steps, self.tpb, self.bpg, rng_state)
 
+    def save_wealths(self, filepath=None):
+        if filepath is None:
+            raise ValueError("Insert a valid filepath, with path/name")
+        else:
+            np.save(
+                filepath, np.array([[self.model[i].w] for i in range(self.n_streams)])
+            )
+
 
 ## LA DEJO COMENTADA PORQUE NO ME GUSTA. ESTO VA A SER LENTISIMO YA QUE
 ## CADA VEZ QUE CORTO EL KERNEL PARA CALCULAR LOS GINIS BORRO Y COPIO MEMORIA
