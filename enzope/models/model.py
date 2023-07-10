@@ -11,8 +11,10 @@ from numba.core.errors import (
     NumbaPerformanceWarning,
 )
 
+from ..measures import gpu_measures
+
 from ..graphs.graph_class import GTG
-from ..kernels import k_ys, measures
+from ..kernels import k_ys
 from ..trades.ys import yard_sale
 
 # Filtro algunos warnings que tira numba
@@ -209,6 +211,7 @@ class CPUModel(BaseModel):
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
         self.w = np.random.rand(self.n_agents).astype(np.float32)
+        self.w_old = np.copy(self.w)
         self.r = np.random.rand(self.n_agents).astype(np.float32)
         self.w = w_0 if w_0 is not None else self.w / (np.sum(self.w))
         self.f = f
@@ -230,12 +233,6 @@ class CPUModel(BaseModel):
         else:
             random_array = self.G.get_opponents_cpu()
         return random_array
-
-    def get_gini(self):
-        w = np.sort(self.w)
-        p_cumsum = np.cumsum(w) / np.sum(w)
-        B = np.sum(p_cumsum) / self.n_agents
-        return 1 + 1 / self.n_agents - 2 * B
 
     def choose_winner(self, i, j):
         p = 0.5 + self.f * ((self.w[j] - self.w[i]) / (self.w[i] + self.w[j]))
