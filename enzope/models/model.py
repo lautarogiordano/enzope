@@ -11,7 +11,7 @@ from numba.core.errors import (
     NumbaPerformanceWarning,
 )
 
-from ..measures import gpu_measures
+from ..metrics import gpu_measures, measures
 
 from ..graphs.graph_class import GTG
 from ..kernels import k_ys
@@ -31,7 +31,7 @@ class BaseModel:
         n_agents,
         w_min=1e-17,
         G=None,
-        save_every=np.inf,
+        measure_every=np.inf,
         upd_w_every=np.inf,
         upd_graph_every=np.inf,
         plot_every=np.inf,
@@ -43,7 +43,97 @@ class BaseModel:
         self.update_links = upd_graph_every
         self.plot = plot_every
         ## Esto es para muestrear el calculo del gini
-        self.every = save_every
+        self.measure_every = measure_every
+
+
+
+class CPUModel(BaseModel):
+    def __init__(self, n_agents=100, G=None, w_0=None, f=0, **kwargs):
+        super().__init__(n_agents, **kwargs)
+        # Initialize n agents with random risks and wealth between (0, 1]
+        # and normalize wealth
+        self.w_old = np.copy(self.w)
+        self.r = np.random.rand(self.n_agents).astype(np.float32)
+        self.w = w_0 if w_0 is not None else np.random.rand(self.n_agents).astype(np.float32) / (np.sum(self.w))
+        self.f = f
+        self.G = G if G is not None else None
+        self.gini = [self.get_gini()]
+        self.n_active = [self.get_n_actives()]
+        self.liquidity = []
+        self.n_frozen = []
+
+    def get_opponents(self):
+        if self.G is None:
+            random_array = np.random.randint(0, self.n_agents, self.n_agents)
+            indices = np.arange(0, self.n_agents)
+            # Create array of random numbers that are not equal to the index
+            # If i=j then assign j'=i+1 (j'=0 if i=N-1)
+            random_array = np.where(
+                random_array == indices,
+                (random_array + 1) % self.n_agents,
+                random_array,
+            )
+        else:
+            random_array = self.G.get_opponents_cpu()
+        return random_array
+
+    def choose_winner(self, i, j):
+        p = 0.5 + self.f * ((self.w[j] - self.w[i]) / (self.w[i] + self.w[j]))
+        return np.random.choice([i, j], p=[p, 1 - p])
+    
+    def get_gini(self):
+        return measures.gini(self.w)
+    
+    def get_n_actives(self):
+        return measures.num_actives(self.w, self.w_old)
+    
+    def get_n_frozen(self):
+        return measures.num_frozen(self.w, self.w_min)
+    
+    def get_liquidity(self):
+        return measures.liquidity(self.w, self.w_old)
+
+    def MCS(self, steps):
+        """
+        Main MC loop
+        """
+        for mcs in range(1, steps):
+
+            self.w_old[:] = self.w
+
+            if mcs % self.plot == 0:
+                self.G.plot_snapshot(self.w_min, mcs, mode="save")
+
+            opps = self.get_opponents()
+
+            for i, j in enumerate(opps):
+                # Check both agents have w > w_min and node is not isolated
+                if self.w[i] > self.w_min and self.w[j] > self.w_min and j != -1:
+                    # Yard-Sale algorithm
+                    dw = yard_sale(self.r[i], self.w[i], self.r[j], self.w[j])
+
+                    winner = self.choose_winner(i, j)
+
+                    dw = np.where(winner == i, dw, -dw)
+
+                    self.w[i] += dw
+                    self.w[j] -= dw
+
+            # After self.update_w update weights
+            if mcs % self.update_w == 0:
+                self.G.update_weights(self.w)
+
+            # Recompute the links if the network is dynamic
+            if (mcs + 1) % self.update_links == 0 and self.G is not None:
+                self.G.update_graph()
+
+            # After self.measure_every MCS append new Gini index
+            if (mcs + 1) % self.measure_every == 0:
+                self.gini.append(self.get_gini())
+                self.n_active.append(self.get_actives())
+                if self.G is not None:
+                    self.n_frozen.append(self.get_n_frozen())
+                self.liquidity.append(self.get_liquidity())
 
 
 class GPUModel(BaseModel):
@@ -121,6 +211,7 @@ class GPUModel(BaseModel):
         cuda.synchronize()
 
 
+
 class GPUEnsemble:
     def __init__(
         self, n_models=1, n_agents=1000, tpb=32, bpg=512, graphs=None, **kwargs
@@ -160,7 +251,7 @@ class GPUEnsemble:
 
     def save_wealths(self, filepath=None):
         if filepath is None:
-            raise ValueError("Insert a valid filepath, with path/name")
+            raise ValueError("Insert a valid filepath with the structure 'path/name'")
         else:
             np.save(
                 filepath, np.array([[self.models[i].w] for i in range(self.n_streams)])
@@ -203,73 +294,3 @@ class GPUEnsemble:
 #                 self.ginis[model][i * run_steps] = measures.cupy_gini(
 #                     cp.asarray(self.models[model].w)
 #                 )
-
-
-class CPUModel(BaseModel):
-    def __init__(self, n_agents=100, G=None, w_0=None, f=0, **kwargs):
-        super().__init__(n_agents, **kwargs)
-        # Initialize n agents with random risks and wealth between (0, 1]
-        # and normalize wealth
-        self.w = np.random.rand(self.n_agents).astype(np.float32)
-        self.w_old = np.copy(self.w)
-        self.r = np.random.rand(self.n_agents).astype(np.float32)
-        self.w = w_0 if w_0 is not None else self.w / (np.sum(self.w))
-        self.f = f
-        self.G = G if G is not None else None
-        # self.gini = [self.get_gini()]
-        # self.n_active = [self.get_actives()]
-
-    def get_opponents(self):
-        if self.G is None:
-            random_array = np.random.randint(0, self.n_agents, self.n_agents)
-            indices = np.arange(0, self.n_agents)
-            # Create array of random numbers that are not equal to the index
-            # If i=j then assign j'=i+1 (j'=0 if i=N-1)
-            random_array = np.where(
-                random_array == indices,
-                (random_array + 1) % self.n_agents,
-                random_array,
-            )
-        else:
-            random_array = self.G.get_opponents_cpu()
-        return random_array
-
-    def choose_winner(self, i, j):
-        p = 0.5 + self.f * ((self.w[j] - self.w[i]) / (self.w[i] + self.w[j]))
-        return np.random.choice([i, j], p=[p, 1 - p])
-
-    def MCS(self, steps):
-        """
-        Main MC loop
-        """
-        for mcs in range(1, steps):
-            if mcs % self.plot == 0:
-                self.G.plot_snapshot(self.w_min, mcs, mode="save")
-
-            opps = self.get_opponents()
-
-            for i, j in enumerate(opps):
-                # Check both agents have w > w_min and node is not isolated
-                if self.w[i] > self.w_min and self.w[j] > self.w_min and j != -1:
-                    # Yard-Sale algorithm
-                    dw = yard_sale(self.r[i], self.w[i], self.r[j], self.w[j])
-
-                    winner = self.choose_winner(i, j)
-
-                    dw = np.where(winner == i, dw, -dw)
-
-                    self.w[i] += dw
-                    self.w[j] -= dw
-
-            # After self.update_w update weights
-            if mcs % self.update_w == 0:
-                self.G.update_weights(self.w)
-
-            # Recompute the links if the network is dynamic
-            if (mcs + 1) % self.update_links == 0 and self.G is not None:
-                self.G.update_graph()
-
-            # After self.every MCS append new Gini index
-            # if (mcs + 1) % self.every == 0:
-            # self.gini.append(self.get_gini())
-            # self.n_active.append(self.get_actives())

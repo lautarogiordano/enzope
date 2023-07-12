@@ -2,7 +2,7 @@ from numba import cuda
 import cupy as cp
 
 
-def giniCupy(w):
+def gini_cupy(w):
     n = len(w)
     w_sorted = cp.sort(w)
     p_cumsum = cp.cumsum(w_sorted) / cp.sum(w)
@@ -11,7 +11,7 @@ def giniCupy(w):
 
 
 @cuda.jit(device=True)
-def numActives(w, wmin):
+def num_actives(w, wmin):
     n = len(w)
     return sum(1 for wi in w if wi > wmin) / n
 

@@ -15,11 +15,11 @@ def liquidity(w, w_old):
     return np.sum(np.abs(w - w_old)) / (2 * n)
 
 
-def numActives(w, w_min):
+def num_actives(w, w_min):
     return np.mean(w > w_min)
 
 
-def numFrozen(w, w_min, G):
+def num_frozen(w, w_min, G):
     n = len(w)
     n_frozen = 0
     is_frozen = 1
