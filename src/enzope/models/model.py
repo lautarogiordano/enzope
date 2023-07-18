@@ -44,13 +44,13 @@ class BaseModel:
 
 
 class CPUModel(BaseModel):
-    def __init__(self, n_agents=100, G=None, w_0=None, f=0, **kwargs):
-        super().__init__(n_agents, **kwargs)
+    def __init__(self, n_agents=100, G=None, w_0=None, f=0, measure_every=np.inf, **kwargs):
+        super().__init__(n_agents, measure_every, **kwargs)
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
-        self.w_old = np.copy(self.w)
         self.r = np.random.rand(self.n_agents).astype(np.float32)
         self.w = w_0 if w_0 is not None else np.random.rand(self.n_agents).astype(np.float32) / (np.sum(self.w))
+        self.w_old = np.copy(self.w)
         self.f = f
         self.G = G if G is not None else None
         self.gini = [self.get_gini()]
