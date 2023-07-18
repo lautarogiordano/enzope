@@ -4,9 +4,11 @@ import warnings
 
 import numpy as np
 from numba import cuda
-from numba.core.errors import (NumbaDeprecationWarning,
-                               NumbaPendingDeprecationWarning,
-                               NumbaPerformanceWarning)
+from numba.core.errors import (
+    NumbaDeprecationWarning,
+    NumbaPendingDeprecationWarning,
+    NumbaPerformanceWarning,
+)
 
 from ..graphs.graph_class import GTG
 from ..kernels import k_ys
@@ -42,14 +44,19 @@ class BaseModel:
         self.measure_every = measure_every
 
 
-
 class CPUModel(BaseModel):
-    def __init__(self, n_agents=100, G=None, w_0=None, f=0, measure_every=np.inf, **kwargs):
-        super().__init__(n_agents, measure_every, **kwargs)
+    def __init__(
+        self, n_agents=100, G=None, w_0=None, f=0, **kwargs
+    ):
+        super().__init__(n_agents, **kwargs)
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
         self.r = np.random.rand(self.n_agents).astype(np.float32)
-        self.w = w_0 if w_0 is not None else np.random.rand(self.n_agents).astype(np.float32) / (np.sum(self.w))
+        if w_0 is not None:
+            self.w = w_0
+        else:
+            self.w = np.random.rand(self.n_agents).astype(np.float32)
+            self.w /= np.sum(self.w)
         self.w_old = np.copy(self.w)
         self.f = f
         self.G = G if G is not None else None
@@ -76,16 +83,16 @@ class CPUModel(BaseModel):
     def choose_winner(self, i, j):
         p = 0.5 + self.f * ((self.w[j] - self.w[i]) / (self.w[i] + self.w[j]))
         return np.random.choice([i, j], p=[p, 1 - p])
-    
+
     def get_gini(self):
         return measures.gini(self.w)
-    
+
     def get_n_actives(self):
-        return measures.num_actives(self.w, self.w_old)
-    
+        return measures.num_actives(self.w, self.w_min)
+
     def get_n_frozen(self):
-        return measures.num_frozen(self.w, self.w_min)
-    
+        return measures.num_frozen(self.w, self.w_min, self.G)
+
     def get_liquidity(self):
         return measures.liquidity(self.w, self.w_old)
 
@@ -94,7 +101,6 @@ class CPUModel(BaseModel):
         Main MC loop
         """
         for mcs in range(1, steps):
-
             self.w_old[:] = self.w
 
             if mcs % self.plot == 0:
@@ -126,7 +132,7 @@ class CPUModel(BaseModel):
             # After self.measure_every MCS append new Gini index
             if (mcs + 1) % self.measure_every == 0:
                 self.gini.append(self.get_gini())
-                self.n_active.append(self.get_actives())
+                self.n_active.append(self.get_n_actives())
                 if self.G is not None:
                     self.n_frozen.append(self.get_n_frozen())
                 self.liquidity.append(self.get_liquidity())
@@ -205,7 +211,6 @@ class GPUModel(BaseModel):
         del w_d, r_d, m_d
 
         cuda.synchronize()
-
 
 
 class GPUEnsemble:
