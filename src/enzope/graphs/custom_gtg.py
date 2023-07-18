@@ -1,7 +1,9 @@
-from itertools import combinations
-import networkx as nx
 import math
+from itertools import combinations
+
+import networkx as nx
 from networkx.utils import py_random_state
+
 
 # Generating function for additive and multiplicative threshold graphs, 
 # slightly modified version from the function provided in the networkx package.

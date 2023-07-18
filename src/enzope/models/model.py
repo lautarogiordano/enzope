@@ -2,19 +2,15 @@
 import time
 import warnings
 
-import cupy as cp
 import numpy as np
 from numba import cuda
-from numba.core.errors import (
-    NumbaDeprecationWarning,
-    NumbaPendingDeprecationWarning,
-    NumbaPerformanceWarning,
-)
-
-from ..metrics import gpu_measures, measures
+from numba.core.errors import (NumbaDeprecationWarning,
+                               NumbaPendingDeprecationWarning,
+                               NumbaPerformanceWarning)
 
 from ..graphs.graph_class import GTG
 from ..kernels import k_ys
+from ..metrics import gpu_measures, measures
 from ..trades.ys import yard_sale
 
 # Filtro algunos warnings que tira numba

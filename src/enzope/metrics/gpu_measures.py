@@ -1,13 +1,14 @@
 from numba import cuda
-import cupy as cp
+
+# import cupy as cp
 
 
-def gini_cupy(w):
-    n = len(w)
-    w_sorted = cp.sort(w)
-    p_cumsum = cp.cumsum(w_sorted) / cp.sum(w)
-    B = cp.sum(p_cumsum) / n
-    return 1 + 1 / n - 2 * B
+# def gini_cupy(w):
+#     n = len(w)
+#     w_sorted = cp.sort(w)
+#     p_cumsum = cp.cumsum(w_sorted) / cp.sum(w)
+#     B = cp.sum(p_cumsum) / n
+#     return 1 + 1 / n - 2 * B
 
 
 @cuda.jit(device=True)

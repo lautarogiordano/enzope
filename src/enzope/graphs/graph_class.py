@@ -1,10 +1,11 @@
-from .custom_gtg import geographical_threshold_graph_custom
-import networkx as nx
-import numpy as np
-import matplotlib.pyplot as plt
-from IPython.display import display
 import os
 
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+from IPython.display import display
+
+from .custom_gtg import geographical_threshold_graph_custom
 
 # ---------------------- #
 #        Classes         #

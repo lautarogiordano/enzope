@@ -1,6 +1,7 @@
-from .locks import *
 from numba import cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
+
+from .locks import *
 
 
 # Yard-Sale kernel for mean-field run
