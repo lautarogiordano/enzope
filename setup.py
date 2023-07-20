@@ -17,7 +17,7 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 setup(
    name="enzope",  # Required
 
-   version="0.0.17",  # Required
+   version="0.0.4",  # Required
    
    description="Agent based modelling in complex networks",  # Optional
    
@@ -28,11 +28,7 @@ setup(
    author_email="giordanolautaro@gmail.com",  # Optional
    
    classifiers=[  # Optional
-        # How mature is this project? Common values are
-        #   3 - Alpha
-        #   4 - Beta
-        #   5 - Production/Stable
-        "Development Status :: 3 - Alpha",
+       "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
         "Topic :: Software Development :: Build Tools",
         "License :: OSI Approved :: MIT License",
