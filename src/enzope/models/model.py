@@ -187,7 +187,7 @@ class GPUModel(BaseModel):
                     rng_state,
                 )
 
-            # If we have a graph we have another kernel
+            # If we have a graph we run another kernel
             if self.G is not None:
                 c_neighs_d = cuda.to_device(self.c_neighs, stream=self.stream)
                 neighs_d = cuda.to_device(self.neighs, stream=self.stream)

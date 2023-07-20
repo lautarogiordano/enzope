@@ -31,3 +31,7 @@ def num_frozen(w, w_min, graph):
                 is_frozen = 0
         n_frozen += is_frozen
     return n_frozen / n
+
+
+# def movility(w, w_old):
+#     return np.mean(np.abs(w - w_old) > 0)
