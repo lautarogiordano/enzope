@@ -49,16 +49,25 @@ class BaseGraph:
 
     def get_opponents_cpu(self, *args, **kwargs):
         pass
-    
+
     def get_mean_connectivity(self):
         pass
-    
+
     def get_average_distance(self):
         pass
 
+
 class GTG(BaseGraph):
     def __init__(
-        self, n_nodes, theta, join="add", w0=None, posi=None, seed=None, **kwargs
+        self,
+        n_nodes,
+        theta,
+        join="add",
+        w0=None,
+        posi=None,
+        seed=None,
+        p_dist=None,
+        **kwargs,
     ):
         super().__init__(n_nodes, **kwargs)
         self.theta = theta
@@ -73,7 +82,7 @@ class GTG(BaseGraph):
             pos=posi,
             weight=w0,
             metric=None,
-            p_dist=None,
+            p_dist=p_dist,
             seed=seed,
             join=join,
         )
@@ -87,7 +96,9 @@ class GTG(BaseGraph):
         return self.G
 
     # Modificar la funcion para que o bien guarde en temp o bien muestre en pantalla
-    def plot_snapshot(self, w_min=1e-17, new_w=None, mcs=None, mode="show", *args, **kwargs):
+    def plot_snapshot(
+        self, w_min=1e-17, new_w=None, mcs=None, mode="show", *args, **kwargs
+    ):
         # Esto se tiene que escribir mejor
         if new_w is not None:
             self.update_weights(new_w)
@@ -159,11 +170,11 @@ class GTG(BaseGraph):
         c_neighs = np.cumsum(n_neighs)
         neighs = np.hstack(neighs).astype(np.int32)
         return c_neighs, neighs
-    
+
     # Some networkx functions for comfort
     def get_mean_connectivity(self):
         return np.mean(list(dict(nx.degree(self.G)).values()))
-    
+
     def get_average_distance(self):
         Gcc = sorted(nx.connected_components(self.G), key=len, reverse=True)
         G0 = self.G.subgraph(Gcc[0])
