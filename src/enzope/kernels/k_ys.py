@@ -1,4 +1,16 @@
+import warnings
+
 from numba import cuda
+from numba.core.errors import (NumbaDeprecationWarning,
+                               NumbaPendingDeprecationWarning,
+                               NumbaPerformanceWarning)
+
+# Filtro algunos warnings que tira numba
+warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
+warnings.simplefilter("ignore", category=NumbaDeprecationWarning)
+warnings.simplefilter("ignore", category=NumbaPendingDeprecationWarning)
+
+
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
 from .locks import *
