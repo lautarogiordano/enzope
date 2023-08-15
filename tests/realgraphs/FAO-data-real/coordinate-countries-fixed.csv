@@ -25,7 +25,7 @@
 "BI","Burundi",-3.5,30
 "BJ","Benin",9.5,2.25
 "BM","Bermuda",32.33,-64.75
-"BN","Brunei Darussalam",4.5,114.67
+"BN","Brunei",4.5,114.67
 "BO","Bolivia",-17,-65
 "BR","Brazil",-10,-55
 "BS","Bahamas",24.25,-76
@@ -36,7 +36,7 @@
 "BZ","Belize",17.25,-88.75
 "CA","Canada",60,-95
 "CC","Cocos (Keeling) Islands",-12.5,96.83
-"CD","Congo, The Democratic Republic of the",0,25
+"CD",Democratic Republic of the Congo,0,25
 "CF","Central African Republic",7,21
 "CG","Congo",-1,15
 "CH","Switzerland",47,8
@@ -48,7 +48,7 @@
 "CO","Colombia",4,-72
 "CR","Costa Rica",10,-84
 "CU","Cuba",21.5,-80
-"CV","Cape Verde",16,-24
+"CV","Cabo Verde",16,-24
 "CX","Christmas Island",-10.5,105.67
 "CY","Cyprus",35,33
 "CZ","Czech Republic",49.75,15.5
@@ -69,7 +69,7 @@
 "FI","Finland",64,26
 "FJ","Fiji",-18,175
 "FK","Falkland Islands (Malvinas)",-51.75,-59
-"FM","Micronesia, Federated States of",6.92,158.25
+"FM",Micronesia,6.92,158.25
 "FO","Faroe Islands",62,-7
 "FR","France",46,2
 "GA","Gabon",-1,11.75
@@ -102,7 +102,7 @@
 "IN","India",20,77
 "IO","British Indian Ocean Territory",-6,71.5
 "IQ","Iraq",33,44
-"IR","Iran, Islamic Republic of",32,53
+"IR",Iran,32,53
 "IS","Iceland",65,-18
 "IT","Italy",42.83,12.83
 "JM","Jamaica",18.25,-77.5
@@ -114,8 +114,8 @@
 "KI","Kiribati",1.42,173
 "KM","Comoros",-12.17,44.25
 "KN","Saint Kitts and Nevis",17.33,-62.75
-"KP","Korea, Democratic People's Republic of",40,127
-"KR","Korea, Republic of",37,127.5
+"KP",Democratic People's Republic of Korea,40,127
+"KR",Republic of Korea,37,127.5
 "KW","Kuwait",29.34,47.66
 "KY","Cayman Islands",19.5,-80.5
 "KZ","Kazakhstan",48,68
@@ -129,7 +129,7 @@
 "LT","Lithuania",56,24
 "LU","Luxembourg",49.75,6.17
 "LV","Latvia",57,25
-"LY","Libyan Arab Jamahiriya",25,17
+"LY",Libya,25,17
 "MA","Morocco",32,-5
 "MC","Monaco",43.73,7.4
 "MD","Moldova, Republic of",47,29
@@ -163,7 +163,7 @@
 "NP","Nepal",28,84
 "NR","Nauru",-0.53,166.92
 "NU","Niue",-19.03,-169.87
-"NZ","New Zealand",-41,174
+"NZ",New Zealand,-41,174
 "OM","Oman",21,57
 "PA","Panama",9,-80
 "PE","Peru",-10,-76
@@ -227,7 +227,7 @@
 "VA","Holy See (Vatican City State)",41.9,12.45
 "VC","Saint Vincent and the Grenadines",13.25,-61.2
 "VE","Venezuela",8,-66
-"VG","Virgin Islands, British",18.5,-64.5
+"VG",British Virgin Islands,18.5,-64.5
 "VI","Virgin Islands, U.S.",18.33,-64.83
 "VN","Vietnam",16,106
 "VU","Vanuatu",-16,167
