@@ -62,6 +62,7 @@ class GTG(BaseGraph):
         self,
         n_nodes,
         theta,
+        metric=None,
         join="add",
         w0=None,
         posi=None,
@@ -71,6 +72,7 @@ class GTG(BaseGraph):
     ):
         super().__init__(n_nodes, **kwargs)
         self.theta = theta
+        self.metric = metric
         self.posi = posi
         self.join = join
         self.seed = seed
@@ -81,7 +83,7 @@ class GTG(BaseGraph):
             dim=2,
             pos=posi,
             weight=w0,
-            metric=None,
+            metric=metric,
             p_dist=p_dist,
             seed=seed,
             join=join,
