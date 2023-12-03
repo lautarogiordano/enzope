@@ -19,7 +19,7 @@ class BaseGraph:
         upd_w=np.inf,
         upd_graph=np.inf,
         upd_plot=np.inf,
-        figpath=None,
+        figpath=os.getcwd(),
         plotable=False,
     ):
         self.n_nodes = n_nodes
@@ -35,7 +35,7 @@ class BaseGraph:
             plt.close(self.fig)
 
         if figpath is not None:
-            self.fighpath = figpath
+            self.figpath = figpath
             self.temppath = os.path.join(self.figpath, "temp")
 
     def plot_snapshot(self, *args, **kwargs):
@@ -130,7 +130,10 @@ class GTG(BaseGraph):
         )
 
         if mode == "save":
-            filename = os.path.join(self.temppath, "test_{:05d}.png".format(mcs))
+            if mcs:
+                filename = os.path.join(self.temppath, "test_{:05d}.png".format(mcs))
+            else:
+                filename = os.path.join(self.temppath, "test.png")
             self.fig.savefig(filename, format="PNG")
 
         if mode == "show":
