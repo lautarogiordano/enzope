@@ -184,6 +184,12 @@ class GTG(BaseGraph):
         Gcc = sorted(nx.connected_components(self.G), key=len, reverse=True)
         G0 = self.G.subgraph(Gcc[0])
         return nx.average_shortest_path_length(G0)
+    
+    def get_clustering(self):
+        return nx.average_clustering(self.G)
+    
+    def get_assortativity(self):
+        return nx.degree_assortativity_coefficient(self.G)
 
 
 # Acá iría la clase del multigraph
