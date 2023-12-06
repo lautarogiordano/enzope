@@ -45,9 +45,7 @@ class BaseModel:
 
 
 class CPUModel(BaseModel):
-    def __init__(
-        self, n_agents=100, G=None, w_0=None, f=0, **kwargs
-    ):
+    def __init__(self, n_agents=100, G=None, w_0=None, f=0, **kwargs):
         super().__init__(n_agents, **kwargs)
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
@@ -258,6 +256,19 @@ class GPUEnsemble:
                 filepath, np.array([[self.models[i].w] for i in range(self.n_streams)])
             )
 
+    def get_gini(self):
+        ginis = [measures.gini(model.w) for model in self.models]
+        return np.mean(ginis), np.std(ginis)
+    
+    def get_n_active(self):
+        n_active = [measures.num_actives(model.w, model.w_min) for model in self.models]
+        return np.mean(n_active), np.std(n_active)
+    
+    def get_n_frozen(self):
+        n_frozen = [measures.num_frozen(model.w, model.w_min, model.G) for model in self.models]
+        return np.mean(n_frozen), np.std(n_frozen)
+    
+    
 
 ## LA DEJO COMENTADA PORQUE NO ME GUSTA. ESTO VA A SER LENTISIMO YA QUE
 ## CADA VEZ QUE CORTO EL KERNEL PARA CALCULAR LOS GINIS BORRO Y COPIO MEMORIA
