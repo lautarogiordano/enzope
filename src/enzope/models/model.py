@@ -61,7 +61,7 @@ class CPUModel(BaseModel):
         self.gini = [self.get_gini()]
         self.n_active = [self.get_n_actives()]
         self.liquidity = []
-        self.n_frozen = []
+        self.n_frozen = [self.get_n_frozen()] if self.G is not None else []
 
     def get_opponents(self):
         if self.G is None:

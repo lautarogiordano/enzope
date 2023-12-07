@@ -177,9 +177,11 @@ class GTG(BaseGraph):
         return c_neighs, neighs
 
     # Some networkx functions for comfort
-    def get_mean_connectivity(self):
-        return np.mean(list(dict(nx.degree(self.G)).values()))
+    def get_mean_degree(self):
+        degrees = [d for n, d in self.G.degree()]
+        return np.mean(degrees), np.std(degrees)
 
+  
     def get_average_distance(self):
         Gcc = sorted(nx.connected_components(self.G), key=len, reverse=True)
         G0 = self.G.subgraph(Gcc[0])
@@ -190,6 +192,7 @@ class GTG(BaseGraph):
     
     def get_assortativity(self):
         return nx.degree_assortativity_coefficient(self.G)
+
 
 
 # Acá iría la clase del multigraph
