@@ -24,6 +24,19 @@ from numba.cuda.random import create_xoroshiro128p_states
 
 
 class BaseModel:
+    """
+    Base class for wealth exchange models.
+
+    Args:
+        n_agents (int): Number of agents.
+        w_min (float, optional): Minimum value for w. Defaults to 1e-17.
+        G (object, optional): Graph object. Defaults to None.
+        measure_every (float, optional): Frequency of measuring the gini coefficient, the fraction of active agents, frozen agents (if working with a graph) and liquidity. Defaults to np.inf.
+        upd_w_every (float, optional): Frequency of updating the weights of the graph. Defaults to np.inf.
+        upd_graph_every (float, optional): Frequency of updating the graph. Defaults to np.inf.
+        plot_every (float, optional): Frequency of plotting. Defaults to np.inf.
+    """
+
     def __init__(
         self,
         n_agents,
@@ -45,6 +58,38 @@ class BaseModel:
 
 
 class CPUModel(BaseModel):
+    """
+    Represents a CPU model for simulating agent-based economic interactions.
+
+    Args:
+        n_agents (int): The number of agents in the model.
+        G (Graph, optional): The graph representing the network connections between agents.
+        w_0 (ndarray, optional): Initial wealth distribution of the agents.
+        f (float, optional): A parameter used in the winner selection process.
+        **kwargs: Additional keyword arguments.
+
+    Attributes:
+        r (ndarray): Array of risks for each agent.
+        w (ndarray): Array of wealth values for each agent.
+        w_old (ndarray): Copy of the previous wealth distribution.
+        f (float): The value of the parameter used in the winner selection process.
+        G (Graph): The graph representing the network connections between agents.
+        gini (list): List of Gini index values at each step.
+        n_active (list): List of the number of active agents at each step.
+        liquidity (list): List of liquidity values at each step.
+        n_frozen (list): List of the number of frozen agents at each step.
+
+    Methods:
+        get_opponents(): Get the opponents for each agent.
+        choose_winner(i, j): Choose a winner between two agents based on their wealth.
+        get_gini(): Computes the Gini index of the current wealth distribution.
+        get_n_actives(): Computes the number of active agents.
+        get_n_frozen(): Computes the number of frozen agents.
+        get_liquidity(): Computes the liquidity value.
+        MCS(steps): Run the main Monte Carlo loop.
+
+    """
+
     def __init__(self, n_agents=100, G=None, w_0=None, f=0, **kwargs):
         super().__init__(n_agents, **kwargs)
         # Initialize n agents with random risks and wealth between (0, 1]
@@ -64,6 +109,19 @@ class CPUModel(BaseModel):
         self.n_frozen = [self.get_n_frozen()] if self.G is not None else []
 
     def get_opponents(self):
+        """
+        Get an array of opponents for each agent.
+
+        If self.G is None, generate a random array of opponents where each element
+        represents the index of an opponent for the corresponding agent. The generated
+        array ensures that no agent is assigned itself as an opponent.
+
+        If self.G is not None, call the `get_opponents_cpu` method of self.G to get
+        the opponents array.
+
+        Returns:
+            numpy.ndarray: Array of opponents for each agent.
+        """
         if self.G is None:
             random_array = np.random.randint(0, self.n_agents, self.n_agents)
             indices = np.arange(0, self.n_agents)
@@ -79,24 +137,62 @@ class CPUModel(BaseModel):
         return random_array
 
     def choose_winner(self, i, j):
+        """
+        Chooses a winner between two options based on their weights.
+
+        Parameters:
+            i (int): The index of the first option.
+            j (int): The index of the second option.
+
+        Returns:
+            int: The index of the chosen winner.
+        """
         p = 0.5 + self.f * ((self.w[j] - self.w[i]) / (self.w[i] + self.w[j]))
         return np.random.choice([i, j], p=[p, 1 - p])
 
     def get_gini(self):
+        """
+        Computes the Gini index of the current wealth distribution.
+
+        Returns:
+            float: The Gini index.
+        """
         return measures.gini(self.w)
 
     def get_n_actives(self):
+        """
+        Computes the number of active agents.
+
+        Returns:
+            int: The number of active agents.
+        """
         return measures.num_actives(self.w, self.w_min)
 
     def get_n_frozen(self):
+        """
+        Computes the number of frozen agents (only works if a graph is present).
+
+        Returns:
+            int: The number of frozen agents.
+        """
         return measures.num_frozen(self.w, self.w_min, self.G)
 
     def get_liquidity(self):
+        """
+        Computes the liquidity value.
+
+        Returns:
+            float: The liquidity value.
+        """
         return measures.liquidity(self.w, self.w_old)
 
     def MCS(self, steps):
         """
         Main MC loop
+
+        Args:
+            steps (int): The number of steps to run the MC loop.
+
         """
         for mcs in range(1, steps):
             self.w_old[:] = self.w
@@ -137,6 +233,32 @@ class CPUModel(BaseModel):
 
 
 class GPUModel(BaseModel):
+    """
+    Represents a GPU model for simulation.
+
+    Args:
+        n_agents (int): Number of agents.
+        w_0 (ndarray, optional): Initial wealth distribution. Defaults to None.
+        f (int, optional): Some parameter. Defaults to 0.
+        tpb (int, optional): Threads per block. Defaults to 32.
+        bpg (int, optional): Blocks per grid. Defaults to 512.
+        stream (Stream, optional): CUDA stream. Defaults to None.
+        **kwargs: Additional keyword arguments.
+
+    Attributes:
+        w (ndarray): Array of agents' wealth.
+        r (ndarray): Array of agents' risks.
+        m (ndarray): Array of mutexes.
+        f (int): Some parameter.
+        stream (Stream): CUDA stream.
+        tpb (int): Threads per block.
+        bpg (int): Blocks per grid.
+
+    Methods:
+        MCS: Perform Monte Carlo simulation.
+
+    """
+
     def __init__(
         self, n_agents=100, w_0=None, f=0, tpb=32, bpg=512, stream=None, **kwargs
     ):
@@ -159,6 +281,16 @@ class GPUModel(BaseModel):
         self.bpg = bpg
 
     def MCS(self, steps, tpb=None, bpg=None, rng_state=None):
+        """
+        Perform Monte Carlo simulation.
+
+        Args:
+            steps (int): Number of simulation steps.
+            tpb (int, optional): Threads per block. Defaults to None.
+            bpg (int, optional): Blocks per grid. Defaults to None.
+            rng_state (ndarray, optional): Random number generator state. Defaults to None.
+
+        """
         with cuda.pinned(self.w):
             w_d = cuda.to_device(self.w, stream=self.stream)
             r_d = cuda.to_device(self.r, stream=self.stream)
@@ -212,6 +344,35 @@ class GPUModel(BaseModel):
 
 
 class GPUEnsemble:
+    """
+    Represents an ensemble of GPU models.
+
+    Args:
+        n_models (int): Number of models in the ensemble. Default is 1.
+        n_agents (int): Number of agents in each model. Default is 1000.
+        tpb (int): Threads per block for GPU computation. Default is 32.
+        bpg (int): Blocks per grid for GPU computation. Default is 512.
+        graphs (list): List of graphs for each model. Default is None.
+        **kwargs: Additional keyword arguments to be passed to the GPUModel constructor.
+
+    Attributes:
+        n_streams (int): Number of streams in the ensemble.
+        n_agents (int): Number of agents in each model.
+        tpb (int): Threads per block for GPU computation.
+        bpg (int): Blocks per grid for GPU computation.
+        graphs (list): List of graphs for each model.
+        streams (list): List of CUDA streams for each model.
+        models (list): List of GPUModel instances in the ensemble.
+        rng_states (list): List of random number generator states for each model.
+
+    Methods:
+        MCS(steps): Performs a Monte Carlo simulation for the specified number of steps.
+        save_wealths(filepath): Saves the wealths of the models to a file.
+        get_gini(): Computes the mean and standard deviation of the Gini coefficients for the models.
+        get_n_active(): Computes the mean and standard deviation of the number of active agents for the models.
+        get_n_frozen(): Computes the mean and standard deviation of the number of frozen agents for the models.
+    """
+
     def __init__(
         self, n_models=1, n_agents=1000, tpb=32, bpg=512, graphs=None, **kwargs
     ):
@@ -245,10 +406,26 @@ class GPUEnsemble:
         ]
 
     def MCS(self, steps):
+        """
+        Performs a Monte Carlo simulation for the specified number of steps.
+
+        Args:
+            steps (int): Number of simulation steps to perform.
+        """
         for model, rng_state in zip(self.models, self.rng_states):
             model.MCS(steps, self.tpb, self.bpg, rng_state)
 
     def save_wealths(self, filepath=None):
+        """
+        Saves the wealths of the models to a file.
+
+        Args:
+            filepath (str): Path to the file where the wealths will be saved.
+                The file should have the structure 'path/name'.
+
+        Raises:
+            ValueError: If filepath is not provided.
+        """
         if filepath is None:
             raise ValueError("Insert a valid filepath with the structure 'path/name'")
         else:
@@ -257,14 +434,32 @@ class GPUEnsemble:
             )
 
     def get_gini(self):
+        """
+        Computes the mean and standard deviation of the Gini coefficients for the models.
+
+        Returns:
+            tuple: A tuple containing the mean and standard deviation of the Gini coefficients.
+        """
         ginis = [measures.gini(model.w) for model in self.models]
         return np.mean(ginis), np.std(ginis)
     
     def get_n_active(self):
+        """
+        Computes the mean and standard deviation of the number of active agents for the models.
+
+        Returns:
+            tuple: A tuple containing the mean and standard deviation of the number of active agents.
+        """
         n_active = [measures.num_actives(model.w, model.w_min) for model in self.models]
         return np.mean(n_active), np.std(n_active)
     
     def get_n_frozen(self):
+        """
+        Computes the mean and standard deviation of the number of frozen agents for the models (only works if a graph is present).
+
+        Returns:
+            tuple: A tuple containing the mean and standard deviation of the number of frozen agents.
+        """ 
         n_frozen = [measures.num_frozen(model.w, model.w_min, model.G) for model in self.models]
         return np.mean(n_frozen), np.std(n_frozen)
     
