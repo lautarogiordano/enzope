@@ -31,6 +31,7 @@ class BaseModel:
         n_agents (int): Number of agents.
         w_min (float, optional): Minimum value for w. Defaults to 1e-17.
         G (object, optional): Graph object. Defaults to None.
+        interaction (function, optional): Function that represents the interaction between two agents. Defaults to yard_sale.
         measure_every (float, optional): Frequency of measuring the gini coefficient, the fraction of active agents, frozen agents (if working with a graph) and liquidity. Defaults to np.inf.
         upd_w_every (float, optional): Frequency of updating the weights of the graph. Defaults to np.inf.
         upd_graph_every (float, optional): Frequency of updating the graph. Defaults to np.inf.
@@ -42,6 +43,7 @@ class BaseModel:
         n_agents,
         w_min=1e-17,
         G=None,
+        interaction=yard_sale,
         measure_every=np.inf,
         upd_w_every=np.inf,
         upd_graph_every=np.inf,
@@ -55,6 +57,8 @@ class BaseModel:
         self.plot = plot_every
         ## Esto es para muestrear el calculo del gini
         self.measure_every = measure_every
+        self.interaction = interaction
+        
 
 
 class CPUModel(BaseModel):
@@ -206,7 +210,7 @@ class CPUModel(BaseModel):
                 # Check both agents have w > w_min and node is not isolated
                 if self.w[i] > self.w_min and self.w[j] > self.w_min and j != -1:
                     # Yard-Sale algorithm
-                    dw = yard_sale(self.r[i], self.w[i], self.r[j], self.w[j])
+                    dw = self.interaction(self.r[i], self.w[i], self.r[j], self.w[j])
 
                     winner = self.choose_winner(i, j)
 
