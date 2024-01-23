@@ -23,54 +23,21 @@ warnings.simplefilter("ignore", category=NumbaPendingDeprecationWarning)
 from numba.cuda.random import create_xoroshiro128p_states
 
 
-class BaseModel:
-    """
-    Base class for wealth exchange models.
-
-    Args:
-        n_agents (int): Number of agents.
-        w_min (float, optional): Minimum value for w. Defaults to 1e-17.
-        G (object, optional): Graph object. Defaults to None.
-        interaction (function, optional): Function that represents the interaction between two agents. Defaults to yard_sale.
-        measure_every (float, optional): Frequency of measuring the gini coefficient, the fraction of active agents, frozen agents (if working with a graph) and liquidity. Defaults to np.inf.
-        upd_w_every (float, optional): Frequency of updating the weights of the graph. Defaults to np.inf.
-        upd_graph_every (float, optional): Frequency of updating the graph. Defaults to np.inf.
-        plot_every (float, optional): Frequency of plotting. Defaults to np.inf.
-    """
-
-    def __init__(
-        self,
-        n_agents,
-        w_min=1e-17,
-        G=None,
-        interaction=yard_sale,
-        measure_every=np.inf,
-        upd_w_every=np.inf,
-        upd_graph_every=np.inf,
-        plot_every=np.inf,
-    ):
-        self.n_agents = n_agents
-        self.w_min = w_min
-        self.G = G
-        self.update_w = upd_w_every
-        self.update_links = upd_graph_every
-        self.plot = plot_every
-        ## Esto es para muestrear el calculo del gini
-        self.measure_every = measure_every
-        self.interaction = interaction
-        
-
-
-class CPUModel(BaseModel):
+class CPUModel(object):
     """
     Represents a CPU model for simulating agent-based economic interactions.
 
     Args:
         n_agents (int): The number of agents in the model.
-        G (Graph, optional): The graph representing the network connections between agents.
-        w_0 (ndarray, optional): Initial wealth distribution of the agents.
+        G (Graph, optional): The graph representing the network connections between agents. Default is None, which is equivalent to a mean-field model.
+        interaction (function, optional): Function that represents the interaction between two agents. Defaults to yard_sale.
         f (float, optional): A parameter used in the winner selection process.
-        **kwargs: Additional keyword arguments.
+        w_min (float, optional): Minimum value for w. Defaults to 1e-17.
+        w_0 (ndarray, optional): Initial wealth distribution of the agents.
+        measure_every (float, optional): Frequency of measuring the gini coefficient, the fraction of active agents, frozen agents (if working with a graph) and liquidity. Defaults to np.inf.
+        upd_w_every (float, optional): Frequency of updating the weights of the graph. Defaults to np.inf.
+        upd_graph_every (float, optional): Frequency of updating the graph. Defaults to np.inf.
+        plot_every (float, optional): Frequency of plotting. Defaults to np.inf.
 
     Attributes:
         r (ndarray): Array of risks for each agent.
@@ -94,8 +61,21 @@ class CPUModel(BaseModel):
 
     """
 
-    def __init__(self, n_agents=100, G=None, w_0=None, f=0, **kwargs):
-        super().__init__(n_agents, **kwargs)
+    def __init__(
+        self,
+        n_agents=100,
+        G=None,
+        interaction=yard_sale,
+        f=0,
+        w_min=3e-17,
+        w_0=None,
+        measure_every=np.inf,
+        upd_w_every=np.inf,
+        upd_graph_every=np.inf,
+        plot_every=np.inf,
+    ):
+        self.n_agents = n_agents
+        self.w_min = w_min
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
         self.r = np.random.rand(self.n_agents).astype(np.float32)
@@ -107,6 +87,13 @@ class CPUModel(BaseModel):
         self.w_old = np.copy(self.w)
         self.f = f
         self.G = G if G is not None else None
+        self.interaction = interaction
+        self.update_w = upd_w_every
+        self.update_links = upd_graph_every
+        self.plot = plot_every
+        ## Esto es para muestrear el calculo del gini
+        self.measure_every = measure_every
+
         self.gini = [self.get_gini()]
         self.n_active = [self.get_n_actives()]
         self.liquidity = []
@@ -152,7 +139,9 @@ class CPUModel(BaseModel):
             int: The index of the chosen winner.
         """
         p = 0.5 + self.f * ((self.w[j] - self.w[i]) / (self.w[i] + self.w[j]))
-        return np.random.choice([i, j], p=[p, 1 - p])
+        winner = np.random.choice([i, j], p=[p, 1 - p])
+        loser = i if winner == j else j
+        return winner, loser
 
     def get_gini(self):
         """
@@ -190,7 +179,7 @@ class CPUModel(BaseModel):
         """
         return measures.liquidity(self.w, self.w_old)
 
-    def MCS(self, steps):
+    def MCS(self, steps):  # sourcery skip: remove-unnecessary-else
         """
         Main MC loop
 
@@ -201,7 +190,7 @@ class CPUModel(BaseModel):
         for mcs in range(1, steps):
             self.w_old[:] = self.w
 
-            if mcs % self.plot == 0:
+            if self.G and mcs % self.plot == 0:
                 self.G.plot_snapshot(self.w_min, mcs, mode="save")
 
             opps = self.get_opponents()
@@ -212,15 +201,17 @@ class CPUModel(BaseModel):
                     # Yard-Sale algorithm
                     dw = self.interaction(self.r[i], self.w[i], self.r[j], self.w[j])
 
-                    winner = self.choose_winner(i, j)
+                    winner, loser = self.choose_winner(i, j)
 
-                    dw = np.where(winner == i, dw, -dw)
+                    if self.w[loser] < dw:
+                        continue
 
-                    self.w[i] += dw
-                    self.w[j] -= dw
+                    else:
+                        self.w[winner] += dw
+                        self.w[loser] -= dw
 
             # After self.update_w update weights
-            if mcs % self.update_w == 0:
+            if self.G and mcs % self.update_w == 0:
                 self.G.update_weights(self.w)
 
             # Recompute the links if the network is dynamic
@@ -236,14 +227,16 @@ class CPUModel(BaseModel):
                 self.liquidity.append(self.get_liquidity())
 
 
-class GPUModel(BaseModel):
+class GPUModel(object):
     """
     Represents a GPU model for simulation.
 
     Args:
         n_agents (int): Number of agents.
-        w_0 (ndarray, optional): Initial wealth distribution. Defaults to None.
+        G (Graph, optional): The graph representing the network connections between agents. Default is None, which is equivalent to a mean-field model.
         f (int, optional): Some parameter. Defaults to 0.
+        w_min (float, optional): Minimum value for w. Defaults to 1e-17.
+        w_0 (ndarray, optional): Initial wealth distribution. Defaults to None.
         tpb (int, optional): Threads per block. Defaults to 32.
         bpg (int, optional): Blocks per grid. Defaults to 512.
         stream (Stream, optional): CUDA stream. Defaults to None.
@@ -264,9 +257,20 @@ class GPUModel(BaseModel):
     """
 
     def __init__(
-        self, n_agents=100, w_0=None, f=0, tpb=32, bpg=512, stream=None, **kwargs
+        self,
+        n_agents=100,
+        G=None,
+        f=0,
+        w_min=3e-17,
+        w_0=None,
+        tpb=32,
+        bpg=512,
+        stream=None,
     ):
-        super().__init__(n_agents, **kwargs)
+        self.n_agents = n_agents
+        self.w_min = w_min
+        self.G = G
+
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
         self.w = np.random.rand(self.n_agents).astype(np.float32)
@@ -446,7 +450,7 @@ class GPUEnsemble:
         """
         ginis = [measures.gini(model.w) for model in self.models]
         return np.mean(ginis), np.std(ginis)
-    
+
     def get_n_active(self):
         """
         Computes the mean and standard deviation of the number of active agents for the models.
@@ -456,18 +460,20 @@ class GPUEnsemble:
         """
         n_active = [measures.num_actives(model.w, model.w_min) for model in self.models]
         return np.mean(n_active), np.std(n_active)
-    
+
     def get_n_frozen(self):
         """
         Computes the mean and standard deviation of the number of frozen agents for the models (only works if a graph is present).
 
         Returns:
             tuple: A tuple containing the mean and standard deviation of the number of frozen agents.
-        """ 
-        n_frozen = [measures.num_frozen(model.w, model.w_min, model.G) for model in self.models]
+        """
+
+        n_frozen = [
+            measures.num_frozen(model.w, model.w_min, model.G) for model in self.models
+        ]
         return np.mean(n_frozen), np.std(n_frozen)
-    
-    
+
 
 ## LA DEJO COMENTADA PORQUE NO ME GUSTA. ESTO VA A SER LENTISIMO YA QUE
 ## CADA VEZ QUE CORTO EL KERNEL PARA CALCULAR LOS GINIS BORRO Y COPIO MEMORIA
