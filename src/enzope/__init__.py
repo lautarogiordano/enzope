@@ -6,3 +6,4 @@ from .metrics.measures import *
 from .metrics.gpu_measures import *
 from .models.model import *
 from .trades.ys import *
+from .utils.plots import *
