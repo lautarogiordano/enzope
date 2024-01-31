@@ -234,7 +234,7 @@ class GPUModel(object):
     Args:
         n_agents (int): Number of agents.
         G (Graph, optional): The graph representing the network connections between agents. Default is None, which is equivalent to a mean-field model.
-        f (int, optional): Some parameter. Defaults to 0.
+        f (float, optional): Some parameter. Defaults to 0.
         w_min (float, optional): Minimum value for w. Defaults to 1e-17.
         w_0 (ndarray, optional): Initial wealth distribution. Defaults to None.
         tpb (int, optional): Threads per block. Defaults to 32.
@@ -246,7 +246,7 @@ class GPUModel(object):
         w (ndarray): Array of agents' wealth.
         r (ndarray): Array of agents' risks.
         m (ndarray): Array of mutexes.
-        f (int): Some parameter.
+        f (float): Some parameter.
         stream (Stream): CUDA stream.
         tpb (int): Threads per block.
         bpg (int): Blocks per grid.
