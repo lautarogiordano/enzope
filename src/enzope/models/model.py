@@ -36,6 +36,8 @@ class CPUModel(object):
         f (float, optional): A parameter used in the winner selection process.
         w_min (float, optional): Minimum value for w. Defaults to 1e-17.
         w_0 (ndarray, optional): Initial wealth distribution of the agents.
+        r_min (float, optional): Minimum value for the risk of the agents. Defaults to 0.
+        r_max (float, optional): Maximum value for the risk of the agents. Defaults to 1.
         measure_every (float, optional): Frequency of measuring the gini coefficient, the fraction of active agents, frozen agents (if working with a graph) and liquidity. Defaults to np.inf.
         upd_w_every (float, optional): Frequency of updating the weights of the graph. Defaults to np.inf.
         upd_graph_every (float, optional): Frequency of updating the graph. Defaults to np.inf.
@@ -48,6 +50,7 @@ class CPUModel(object):
         f (float): The value of the parameter used in the winner selection process.
         G (Graph): The graph representing the network connections between agents.
         gini (list): List of Gini index values at each step.
+        palma (list): List of Palma ratio values at each step.
         n_active (list): List of the number of active agents at each step.
         liquidity (list): List of liquidity values at each step.
         n_frozen (list): List of the number of frozen agents at each step.
@@ -56,10 +59,13 @@ class CPUModel(object):
         get_opponents(): Get the opponents for each agent.
         choose_winner(i, j): Choose a winner between two agents based on their wealth.
         get_gini(): Computes the Gini index of the current wealth distribution.
+        get_palma_ratio(): Computes the Palma ratio of the current wealth distribution.
         get_n_actives(): Computes the number of active agents.
         get_n_frozen(): Computes the number of frozen agents.
         get_liquidity(): Computes the liquidity value.
         MCS(steps): Run the main Monte Carlo loop.
+        save(filename, filepath): Save the model's state to a Pickle file.
+        load(filename, filepath): Load the model's state from a Pickle file.
 
     """
 
