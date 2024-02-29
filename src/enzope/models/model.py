@@ -1,6 +1,8 @@
 # from ..kernels.k_ys import *
 import time
 import warnings
+import os
+import pickle
 
 import numpy as np
 from numba import cuda
@@ -95,6 +97,7 @@ class CPUModel(object):
         self.measure_every = measure_every
 
         self.gini = [self.get_gini()]
+        self.palma = [self.get_palma_ratio()]
         self.n_active = [self.get_n_actives()]
         self.liquidity = []
         self.n_frozen = [self.get_n_frozen()] if self.G is not None else []
@@ -151,6 +154,15 @@ class CPUModel(object):
             float: The Gini index.
         """
         return measures.gini(self.w)
+    
+    def get_palma_ratio(self):
+        """
+        Computes the Palma ratio of the current wealth distribution.
+
+        Returns:
+            float: The Palma ratio.
+        """
+        return measures.palma_ratio(self.w)
 
     def get_n_actives(self):
         """
@@ -221,10 +233,38 @@ class CPUModel(object):
             # After self.measure_every MCS append new Gini index
             if (mcs + 1) % self.measure_every == 0:
                 self.gini.append(self.get_gini())
+                self.palma.append(self.get_palma_ratio())
                 self.n_active.append(self.get_n_actives())
                 if self.G is not None:
                     self.n_frozen.append(self.get_n_frozen())
                 self.liquidity.append(self.get_liquidity())
+
+    def save(self, filename='default', filepath=os.getcwd()):
+        """
+        Save the model's state to a file.
+
+        Args:
+            filename (str): The name of the file to save the state to. Defaults to 'default'.
+            filepath (str): The path to the file. Defaults to the current working directory.
+        """
+        if filename == 'default':
+            filename = f"model_{int(time.time())}.npy"
+        with open(os.path.join(filepath, filename, '.pkl'), 'wb') as f:
+            pickle.dump(self.__dict__, f)
+
+    def load(self, filename, filepath=os.getcwd()):
+        """
+        Load the model's state from a file.
+
+        Args:
+            filename (str): The name of the file to load the state from.
+            filepath (str): The path to the file. Defaults to the current working directory.
+        """
+        with open(os.path.join(filepath, filename, '.pkl'), 'rb') as f:
+            self.__dict__ = pickle.load(f)
+
+
+
 
 
 class GPUModel(object):

@@ -20,6 +20,26 @@ def gini(w):
     return 1 + 1 / n - 2 * B
 
 
+def palma_ratio(w):
+    """
+    Compute the Palma ratio for a given array of weights. It is defined as 
+    the ratio of the richest 10% of the population's wealth divided by the
+    poorest 40%'s share.
+
+    Parameters:
+    w (array-like): Array of weights.
+
+    Returns:
+    float: The Palma ratio.
+
+    """
+    w_sorted = np.sort(w)
+    n = len(w)
+    w_top = np.sum(w_sorted[-int(.1*n):])
+    w_bot = np.sum(w_sorted[:int(.4*n)])
+    return w_top / w_bot
+
+
 def liquidity(w, w_old):
     """
     Compute the liquidity measure between two arrays.
