@@ -71,6 +71,8 @@ class CPUModel(object):
         f=0,
         w_min=3e-17,
         w_0=None,
+        r_min=0,
+        r_max=1,
         measure_every=np.inf,
         upd_w_every=np.inf,
         upd_graph_every=np.inf,
@@ -80,7 +82,8 @@ class CPUModel(object):
         self.w_min = w_min
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
-        self.r = np.random.rand(self.n_agents).astype(np.float32)
+        assert(r_min < r_max)
+        self.r = np.random.uniform(r_min, r_max, self.n_agents).astype(np.float32)
         if w_0 is not None:
             self.w = w_0
         else:
@@ -248,8 +251,9 @@ class CPUModel(object):
             filepath (str): The path to the file. Defaults to the current working directory.
         """
         if filename == 'default':
-            filename = f"model_{int(time.time())}.npy"
-        with open(os.path.join(filepath, filename, '.pkl'), 'wb') as f:
+            graph = 'mean_field' if self.G is None else 'graph'
+            filename = f"model_agents={self.n_agents}_f={self.f}_mcs={len(self.gini)}_{graph}"
+        with open(os.path.join(filepath, f'{filename}.pkl'), 'wb') as f:
             pickle.dump(self.__dict__, f)
 
     def load(self, filename, filepath=os.getcwd()):
@@ -260,7 +264,7 @@ class CPUModel(object):
             filename (str): The name of the file to load the state from.
             filepath (str): The path to the file. Defaults to the current working directory.
         """
-        with open(os.path.join(filepath, filename, '.pkl'), 'rb') as f:
+        with open(os.path.join(filepath, f'{filename}.pkl'), 'rb') as f:
             self.__dict__ = pickle.load(f)
 
 
