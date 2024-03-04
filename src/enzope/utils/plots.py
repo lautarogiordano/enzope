@@ -13,8 +13,21 @@ def distribution(w, bins=50, title=None, figsize=(8, 6), xlabel=r'$w$', **kwargs
         ax.set_title(title)
     return fig
 
-def lorenz_curve(w_set, labels, savefile=None, **kwargs):
-    fig, ax = plt.subplots(dpi=300)
+def lorenz_curve(w_set, labels, dpi=150, savefile=None, **kwargs):
+    """
+    Plots the Lorenz curve for a set of wealth distributions.
+
+    Parameters:
+    - w_set (list): List of wealth distributions to plot.
+    - labels (list): List of labels for each wealth distribution.
+    - dpi (int, optional): Dots per inch of the plot. Defaults to 150.
+    - savefile (str, optional): Filepath to save the plot. Defaults to None.
+    - **kwargs: Additional keyword arguments to customize the plot.
+
+    Returns:
+    None
+    """
+    fig, ax = plt.subplots(dpi=dpi)
 
     ax.set_ylabel("Cumulative wealth")
     ax.set_xlabel("Fraction of agents")
