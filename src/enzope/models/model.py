@@ -66,6 +66,7 @@ class CPUModel(object):
         MCS(steps): Run the main Monte Carlo loop.
         save(filename, filepath): Save the model's state to a Pickle file.
         load(filename, filepath): Load the model's state from a Pickle file.
+        info(): Print information about the model.
 
     """
 
@@ -273,6 +274,26 @@ class CPUModel(object):
         with open(os.path.join(filepath, f'{filename}.pkl'), 'rb') as f:
             self.__dict__ = pickle.load(f)
 
+    def info(self):
+            """
+            Prints information about the model.
+
+            This method prints various information about the model, including the number of agents,
+            the graph, the interaction type, the function, the current Gini coefficient, the number
+            of active agents, and the richest agent.
+
+            Returns:
+                None
+            """
+            print("--- Model Info ---")
+            print(f"Agents: {self.n_agents}")
+            print(f"Graph: {self.G}")
+            print(f"Interaction: {self.interaction}")
+            print(f"f: {self.f}")
+            print(f"Current Gini: {self.get_gini()}")
+            print(f"Current Actives: {self.get_n_actives()}")
+            print(f"Richest Agent: {np.max(self.w)}")
+            print("------------------")
 
 
 
