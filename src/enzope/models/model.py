@@ -3,6 +3,7 @@ import time
 import warnings
 import os
 import pickle
+from tqdm import tqdm
 
 import numpy as np
 from numba import cuda
@@ -489,14 +490,14 @@ class GPUEnsemble:
             for i in range(self.n_streams)
         ]
 
-    def MCS(self, steps):
+    def MCS(self, steps, verbose=False):
         """
         Performs a Monte Carlo simulation for the specified number of steps.
 
         Args:
             steps (int): Number of simulation steps to perform.
         """
-        for model, rng_state in zip(self.models, self.rng_states):
+        for model, rng_state in tqdm(zip(self.models, self.rng_states)):
             model.MCS(steps, self.tpb, self.bpg, rng_state)
 
     def save_wealths(self, filepath=None):

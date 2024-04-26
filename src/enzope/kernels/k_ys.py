@@ -62,7 +62,7 @@ def k_ys_mcs_graph(
 
     for t in range(mcs):
         for i in range(tid, n_agents, stride):
-            # c_neighs has N+1 comonents, so i does not overflow.
+            # c_neighs has N+1 components, so i does not overflow.
             n_neighs = c_neighs[i+1] - c_neighs[i]
             if n_neighs > 0:
                 # Choose random index between 0 and n_neighs - 1
