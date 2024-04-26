@@ -308,6 +308,8 @@ class GPUModel(object):
         f (float, optional): Some parameter. Defaults to 0.
         w_min (float, optional): Minimum value for w. Defaults to 1e-17.
         w_0 (ndarray, optional): Initial wealth distribution. Defaults to None.
+        r_min (float, optional): Minimum value for the risk of the agents. Defaults to 0.
+        r_max (float, optional): Maximum value for the risk of the agents. Defaults to 1.
         tpb (int, optional): Threads per block. Defaults to 32.
         bpg (int, optional): Blocks per grid. Defaults to 512.
         stream (Stream, optional): CUDA stream. Defaults to None.
@@ -334,6 +336,8 @@ class GPUModel(object):
         f=0,
         w_min=3e-17,
         w_0=None,
+        r_min=0,
+        r_max=1,
         tpb=32,
         bpg=512,
         stream=None,
@@ -345,7 +349,8 @@ class GPUModel(object):
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
         self.w = np.random.rand(self.n_agents).astype(np.float32)
-        self.r = np.random.rand(self.n_agents).astype(np.float32)
+        self.r = np.random.uniform(r_min, r_max, self.n_agents).astype(np.float32)
+
         # Mutex for double lock
         self.m = np.zeros((self.n_agents), dtype=np.int32)
         self.f = f
@@ -544,41 +549,3 @@ class GPUEnsemble:
             measures.num_frozen(model.w, model.w_min, model.G) for model in self.models
         ]
         return np.mean(n_frozen), np.std(n_frozen)
-
-
-## LA DEJO COMENTADA PORQUE NO ME GUSTA. ESTO VA A SER LENTISIMO YA QUE
-## CADA VEZ QUE CORTO EL KERNEL PARA CALCULAR LOS GINIS BORRO Y COPIO MEMORIA
-## A LO LOCO (SIN CONTAR QUE LLAMAR A UN KERNEL VARIAS VECES YA ES MAS LENTO DE
-## POR SI). PODRIA SOLUCIONARLO MAS FACIL SI ENCONTRARA ALGUNA FORMA DE SORTEAR
-## EL ARRAY W DESDE DENTRO DEL DEVICE.
-# class GPUEnsembleModified(GPUEnsemble):
-#     """
-#     Modified version of GPUEnsemble class that permits the computation of
-#     some measures like the gini index, at the expense of a higher runtime
-#     (10-100x slower).
-#     """
-
-#     def __init__(
-#         self,
-#         gini_every=np.inf,
-#         n_models=1,
-#         n_agents=1000,
-#         tpb=32,
-#         bpg=512,
-#         graphs=None,
-#         **kwargs
-#     ):
-#         super().__init__(n_models, n_agents, tpb, bpg, graphs, **kwargs)
-#         self.gini_every = gini_every
-#         self.ginis = [{} for _ in range(self.n_models)]
-
-#     def MCS(self, steps):
-#         run_steps = self.gini_every
-#         for i in range(steps // run_steps + 1):
-#             for model, rng_state in zip(self.models, self.rng_states):
-#                 # We run the model run_steps times and append the ginis
-#                 model.MCS(run_steps, self.tpb, self.bpg, rng_state)
-#                 # self.ginis[i][t] means the gini of model i at time t
-#                 self.ginis[model][i * run_steps] = measures.cupy_gini(
-#                     cp.asarray(self.models[model].w)
-#                 )
