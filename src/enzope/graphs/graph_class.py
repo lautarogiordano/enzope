@@ -7,6 +7,9 @@ from IPython.display import display
 
 from .custom_gtg import geographical_threshold_graph_custom
 
+def r1(x):
+    return x**(-1)
+
 # ---------------------- #
 #        Classes         #
 # ---------------------- #
@@ -300,6 +303,7 @@ class GTG(BaseGraph):
         c_neighs = np.cumsum(n_neighs)
         neighs = np.hstack(neighs).astype(np.int32)
         return c_neighs, neighs
+    
 
 
 
