@@ -44,7 +44,7 @@ def graph_ensemble():
 # Esto esta copiado con distintos f_set porque el cluster me reta que uso muchos recursos
 f_set = np.arange(0, .25, 0.02)
 
-for f in f_set:
+for i, f in f_set:
     graphs = ba_ensemble()
     
     # Esto es un fix para que corra el programa, ya que la funcion get_neighbours_gpu solo esta en la clase GTG
