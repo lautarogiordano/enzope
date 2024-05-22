@@ -5,7 +5,7 @@ import networkx as nx
 from networkx.utils import py_random_state
 
 
-# Generating function for additive and multiplicative threshold graphs, 
+# Generating function for additive and multiplicative threshold graphs,
 # slightly modified version from the function provided in the networkx package.
 @py_random_state(7)
 def geographical_threshold_graph_custom(
@@ -26,13 +26,13 @@ def geographical_threshold_graph_custom(
     $w_u$. Two nodes $u$ and $v$ are joined by an edge if
 
     .. math::
-       
+
        - Additive type:
        (w_u + w_v)p_{dist}(r) \ge \theta
-       
+
        - Multiplicative type
        (w_u * w_v)p_{dist}(r) \ge \theta
-       
+
     where `r` is the distance between `u` and `v`, `p_dist` is any function of
     `r`, and :math:`\theta` as the threshold parameter. `p_dist` is used to
     give weight to the distance between nodes when deciding whether or not
@@ -167,10 +167,10 @@ def geographical_threshold_graph_custom(
         # Lautaro Modified. If not additive, weights join multiplicatively
         if join == "add":
             return (u_weight + v_weight) * p_dist(metric(u_pos, v_pos)) >= theta
-        
+
         if join == "mul":
             return (u_weight * v_weight) * p_dist(metric(u_pos, v_pos)) >= theta
-    
+
         else:
             raise TypeError("join should be 'add' or 'mul'.")
 

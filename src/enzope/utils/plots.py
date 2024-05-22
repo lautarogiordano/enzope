@@ -2,7 +2,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import os
 
-def distribution(w, bins=50, title=None, figsize=(8, 6), xlabel=r'$w$', **kwargs):
+
+def distribution(w, bins=50, title=None, figsize=(8, 6), xlabel=r"$w$", **kwargs):
     """Plot the distribution of a vector of weights."""
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
@@ -12,6 +13,7 @@ def distribution(w, bins=50, title=None, figsize=(8, 6), xlabel=r'$w$', **kwargs
     if title is not None:
         ax.set_title(title)
     return fig
+
 
 def lorenz_curve(w_set, labels, dpi=150, savefile=None, **kwargs):
     """
@@ -44,7 +46,8 @@ def lorenz_curve(w_set, labels, dpi=150, savefile=None, **kwargs):
     ax.plot(
         np.linspace(0, 1, agent.shape[0]),
         np.cumsum(agent) / np.sum(agent),
-        label="Initial condition", color="black",
+        label="Initial condition",
+        color="black",
         linestyle="--",
     )
 

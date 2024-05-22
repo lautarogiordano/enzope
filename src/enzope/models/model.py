@@ -90,7 +90,7 @@ class CPUModel(object):
         self.w_min = w_min
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
-        assert(r_min < r_max)
+        assert r_min < r_max
         self.r = np.random.uniform(r_min, r_max, self.n_agents).astype(np.float32)
         if w_0 is not None:
             self.w = w_0
@@ -165,7 +165,7 @@ class CPUModel(object):
             float: The Gini index.
         """
         return measures.gini(self.w)
-    
+
     def get_palma_ratio(self):
         """
         Computes the Palma ratio of the current wealth distribution.
@@ -250,7 +250,7 @@ class CPUModel(object):
                     self.n_frozen.append(self.get_n_frozen())
                 self.liquidity.append(self.get_liquidity())
 
-    def save(self, filename='default', filepath=os.getcwd()):
+    def save(self, filename="default", filepath=os.getcwd()):
         """
         Save the model's state to a file.
 
@@ -258,10 +258,12 @@ class CPUModel(object):
             filename (str): The name of the file to save the state to. Defaults to 'default'.
             filepath (str): The path to the file. Defaults to the current working directory.
         """
-        if filename == 'default':
-            graph = 'mean_field' if self.G is None else 'graph'
-            filename = f"model_agents={self.n_agents}_f={self.f}_mcs={len(self.gini)}_{graph}"
-        with open(os.path.join(filepath, f'{filename}.pkl'), 'wb') as f:
+        if filename == "default":
+            graph = "mean_field" if self.G is None else "graph"
+            filename = (
+                f"model_agents={self.n_agents}_f={self.f}_mcs={len(self.gini)}_{graph}"
+            )
+        with open(os.path.join(filepath, f"{filename}.pkl"), "wb") as f:
             pickle.dump(self.__dict__, f)
 
     def load(self, filename, filepath=os.getcwd()):
@@ -272,31 +274,29 @@ class CPUModel(object):
             filename (str): The name of the file to load the state from.
             filepath (str): The path to the file. Defaults to the current working directory.
         """
-        with open(os.path.join(filepath, f'{filename}.pkl'), 'rb') as f:
+        with open(os.path.join(filepath, f"{filename}.pkl"), "rb") as f:
             self.__dict__ = pickle.load(f)
 
     def info(self):
-            """
-            Prints information about the model.
+        """
+        Prints information about the model.
 
-            This method prints various information about the model, including the number of agents,
-            the graph, the interaction type, the function, the current Gini coefficient, the number
-            of active agents, and the richest agent.
+        This method prints various information about the model, including the number of agents,
+        the graph, the interaction type, the function, the current Gini coefficient, the number
+        of active agents, and the richest agent.
 
-            Returns:
-                None
-            """
-            print("--- Model Info ---")
-            print(f"Agents: {self.n_agents}")
-            print(f"Graph: {self.G}")
-            print(f"Interaction: {self.interaction}")
-            print(f"f: {self.f}")
-            print(f"Current Gini: {self.get_gini()}")
-            print(f"Current Actives: {self.get_n_actives()}")
-            print(f"Richest Agent: {np.max(self.w)}")
-            print("------------------")
-
-
+        Returns:
+            None
+        """
+        print("--- Model Info ---")
+        print(f"Agents: {self.n_agents}")
+        print(f"Graph: {self.G}")
+        print(f"Interaction: {self.interaction}")
+        print(f"f: {self.f}")
+        print(f"Current Gini: {self.get_gini()}")
+        print(f"Current Actives: {self.get_n_actives()}")
+        print(f"Richest Agent: {np.max(self.w)}")
+        print("------------------")
 
 
 class GPUModel(object):

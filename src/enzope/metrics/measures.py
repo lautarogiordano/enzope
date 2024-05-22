@@ -22,7 +22,7 @@ def gini(w):
 
 def palma_ratio(w):
     """
-    Compute the Palma ratio for a given array of weights. It is defined as 
+    Compute the Palma ratio for a given array of weights. It is defined as
     the ratio of the richest 10% of the population's wealth divided by the
     poorest 40%'s share.
 
@@ -35,8 +35,8 @@ def palma_ratio(w):
     """
     w_sorted = np.sort(w)
     n = len(w)
-    w_top = np.sum(w_sorted[-int(.1*n):])
-    w_bot = np.sum(w_sorted[:int(.4*n)])
+    w_top = np.sum(w_sorted[-int(0.1 * n) :])
+    w_bot = np.sum(w_sorted[: int(0.4 * n)])
     return w_top / w_bot
 
 
@@ -94,9 +94,11 @@ def num_frozen(w, w_min, graph):
         n_frozen += is_frozen
     return n_frozen / n
 
+
 def r1(x):
     # Esta se usa para generar las gtgs poniengo GTG(..., p_dist=measures.r1)
-    return 1/x
+    return 1 / x
+
 
 # def movility(w, w_old):
 #     return np.mean(np.abs(w - w_old) > 0)

@@ -1,9 +1,11 @@
 import warnings
 
 from numba import cuda
-from numba.core.errors import (NumbaDeprecationWarning,
-                               NumbaPendingDeprecationWarning,
-                               NumbaPerformanceWarning)
+from numba.core.errors import (
+    NumbaDeprecationWarning,
+    NumbaPendingDeprecationWarning,
+    NumbaPerformanceWarning,
+)
 
 # Filtro algunos warnings que tira numba
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
@@ -51,9 +53,7 @@ def k_ys_mcs(n_agents, w, r, mutex, wmin, f, mcs, rng_state):
 
 # Yard-Sale kernel in a complex network
 @cuda.jit
-def k_ys_mcs_graph(
-    n_agents, w, r, mutex, c_neighs, neighs, wmin, f, mcs, rng_state
-):
+def k_ys_mcs_graph(n_agents, w, r, mutex, c_neighs, neighs, wmin, f, mcs, rng_state):
     tid = cuda.grid(1)
     stride = cuda.gridsize(1)
 
@@ -63,7 +63,7 @@ def k_ys_mcs_graph(
     for t in range(mcs):
         for i in range(tid, n_agents, stride):
             # c_neighs has N+1 components, so i does not overflow.
-            n_neighs = c_neighs[i+1] - c_neighs[i]
+            n_neighs = c_neighs[i + 1] - c_neighs[i]
             if n_neighs > 0:
                 # Choose random index between 0 and n_neighs - 1
                 rand_neigh = int(

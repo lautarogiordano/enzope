@@ -7,8 +7,10 @@ from IPython.display import display
 
 from .custom_gtg import geographical_threshold_graph_custom
 
+
 def r1(x):
-    return x**(-1)
+    return x ** (-1)
+
 
 # ---------------------- #
 #        Classes         #
@@ -46,7 +48,7 @@ class BaseGraph:
         self.n_nodes = n_nodes
         # self.upd_w = upd_w
         # self.upd_graph = upd_graph
-        # self.upd_plot = upd_plot 
+        # self.upd_plot = upd_plot
         self.G = None
 
         if plotable:
@@ -70,7 +72,7 @@ class BaseGraph:
         """
         degrees = [d for n, d in self.G.degree()]
         return np.mean(degrees), np.std(degrees)
-  
+
     def get_average_distance(self):
         """
         Compute the average shortest path length of the graph.
@@ -82,7 +84,7 @@ class BaseGraph:
         Gcc = sorted(nx.connected_components(self.G), key=len, reverse=True)
         G0 = self.G.subgraph(Gcc[0])
         return nx.average_shortest_path_length(G0)
-    
+
     def get_clustering(self):
         """
         Compute the average clustering coefficient of the graph.
@@ -92,7 +94,7 @@ class BaseGraph:
 
         """
         return nx.average_clustering(self.G)
-    
+
     def get_assortativity(self):
         """
         Compute the degree assortativity coefficient of the graph.
@@ -102,7 +104,6 @@ class BaseGraph:
 
         """
         return nx.degree_assortativity_coefficient(self.G)
-
 
 
 class GTG(BaseGraph):
@@ -137,6 +138,7 @@ class GTG(BaseGraph):
     - get_opponents_cpu(self, *args, **kwargs): Returns an array of randomly chosen opponents for each node.
     - get_neighbors_array_gpu(self, *args, **kwargs): Returns arrays of cumulative neighbors and individual neighbors for each node (Used only for GPU runs).
     """
+
     def __init__(
         self,
         n_nodes,
@@ -283,7 +285,7 @@ class GTG(BaseGraph):
 
         return opponents
 
-# Function inspired by cuTradeNet's toLL() function in:
+    # Function inspired by cuTradeNet's toLL() function in:
     # https://github.com/Qsanti/cuTradeNet/blob/e20f29e65bcac448d7fcd17fac45746f90e8538e/cuTradeNet/Models/Utils/GraphManager.py
     def get_neighbors_array_gpu(self, *args, **kwargs):
         """
@@ -303,8 +305,6 @@ class GTG(BaseGraph):
         c_neighs = np.cumsum(n_neighs)
         neighs = np.hstack(neighs).astype(np.int32)
         return c_neighs, neighs
-    
-
 
 
 # Acá iría la clase del multigraph
