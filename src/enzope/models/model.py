@@ -1,5 +1,3 @@
-# from ..kernels.k_ys import *
-import time
 import warnings
 import os
 import pickle
@@ -7,23 +5,22 @@ from tqdm import tqdm
 
 import numpy as np
 from numba import cuda
+from numba.cuda.random import create_xoroshiro128p_states
+
 from numba.core.errors import (
     NumbaDeprecationWarning,
     NumbaPendingDeprecationWarning,
     NumbaPerformanceWarning,
 )
 
-from ..graphs.graph_class import GTG
 from ..kernels import k_ys
-from ..metrics import gpu_measures, measures
+from ..metrics import measures
 from ..trades.ys import yard_sale
 
 # Filtro algunos warnings que tira numba
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 warnings.simplefilter("ignore", category=NumbaDeprecationWarning)
 warnings.simplefilter("ignore", category=NumbaPendingDeprecationWarning)
-
-from numba.cuda.random import create_xoroshiro128p_states
 
 
 class CPUModel(object):
@@ -59,11 +56,6 @@ class CPUModel(object):
     Methods:
         get_opponents(): Get the opponents for each agent.
         choose_winner(i, j): Choose a winner between two agents based on their wealth.
-        get_gini(): Computes the Gini index of the current wealth distribution.
-        get_palma_ratio(): Computes the Palma ratio of the current wealth distribution.
-        get_n_actives(): Computes the number of active agents.
-        get_n_frozen(): Computes the number of frozen agents.
-        get_liquidity(): Computes the liquidity value.
         MCS(steps): Run the main Monte Carlo loop.
         save(filename, filepath): Save the model's state to a Pickle file.
         load(filename, filepath): Load the model's state from a Pickle file.
@@ -104,14 +96,18 @@ class CPUModel(object):
         self.update_w = upd_w_every
         self.update_links = upd_graph_every
         self.plot = plot_every
-        ## Esto es para muestrear el calculo del gini
+        # Esto es para muestrear el calculo del gini
         self.measure_every = measure_every
 
-        self.gini = [self.get_gini()]
-        self.palma = [self.get_palma_ratio()]
-        self.n_active = [self.get_n_actives()]
+        self.gini = [measures.gini(self.w)]
+        self.palma = [measures.palma_ratio(self.w)]
+        self.n_active = [measures.num_actives(self.w, self.w_min)]
         self.liquidity = []
-        self.n_frozen = [self.get_n_frozen()] if self.G is not None else []
+        self.n_frozen = (
+            [measures.num_frozen(self.w, self.w_min, self.G)]
+            if self.G is not None
+            else []
+        )
 
     def get_opponents(self):
         """
@@ -157,51 +153,6 @@ class CPUModel(object):
         loser = i if winner == j else j
         return winner, loser
 
-    def get_gini(self):
-        """
-        Computes the Gini index of the current wealth distribution.
-
-        Returns:
-            float: The Gini index.
-        """
-        return measures.gini(self.w)
-
-    def get_palma_ratio(self):
-        """
-        Computes the Palma ratio of the current wealth distribution.
-
-        Returns:
-            float: The Palma ratio.
-        """
-        return measures.palma_ratio(self.w)
-
-    def get_n_actives(self):
-        """
-        Computes the number of active agents.
-
-        Returns:
-            int: The number of active agents.
-        """
-        return measures.num_actives(self.w, self.w_min)
-
-    def get_n_frozen(self):
-        """
-        Computes the number of frozen agents (only works if a graph is present).
-
-        Returns:
-            int: The number of frozen agents.
-        """
-        return measures.num_frozen(self.w, self.w_min, self.G)
-
-    def get_liquidity(self):
-        """
-        Computes the liquidity value.
-
-        Returns:
-            float: The liquidity value.
-        """
-        return measures.liquidity(self.w, self.w_old)
-
     def MCS(self, steps):  # sourcery skip: remove-unnecessary-else
         """
         Main MC loop
@@ -243,12 +194,14 @@ class CPUModel(object):
 
             # After self.measure_every MCS append new Gini index
             if (mcs + 1) % self.measure_every == 0:
-                self.gini.append(self.get_gini())
-                self.palma.append(self.get_palma_ratio())
-                self.n_active.append(self.get_n_actives())
+                self.gini.append(measures.gini(self.w))
+                self.palma.append(measures.palma_ratio(self.w))
+                self.n_active.append(measures.num_actives(self.w, self.w_min))
                 if self.G is not None:
-                    self.n_frozen.append(self.get_n_frozen())
-                self.liquidity.append(self.get_liquidity())
+                    self.n_frozen.append(
+                        measures.num_frozen(self.w, self.w_min, self.G)
+                    )
+                self.liquidity.append(measures.liquidity(self.w, self.w_old))
 
     def save(self, filename="default", filepath=os.getcwd()):
         """
@@ -293,8 +246,8 @@ class CPUModel(object):
         print(f"Graph: {self.G}")
         print(f"Interaction: {self.interaction}")
         print(f"f: {self.f}")
-        print(f"Current Gini: {self.get_gini()}")
-        print(f"Current Actives: {self.get_n_actives()}")
+        print(f"Current Gini: {measures.gini(self.w)}")
+        print(f"Current Actives: {measures.num_actives(self.w, self.w_min)}")
         print(f"Richest Agent: {np.max(self.w)}")
         print("------------------")
 
@@ -361,7 +314,7 @@ class GPUModel(object):
         if self.G is not None:
             (self.c_neighs, self.neighs) = self.G.get_neighbors_array_gpu()
 
-        self.stream = stream if stream != None else cuda.default_stream()
+        self.stream = stream if stream is not None else cuda.default_stream()
         self.tpb = tpb
         self.bpg = bpg
 
@@ -391,7 +344,7 @@ class GPUModel(object):
 
             # No graph -> Mean field kernel
             if self.G is None:
-                k_ys.k_ys_mcs[bpg, tpb, self.stream](
+                k_ys.k_ys_mcs[bpg, tpb, self.stream](  # type: ignore
                     self.n_agents,
                     w_d,
                     r_d,
@@ -407,7 +360,7 @@ class GPUModel(object):
                 c_neighs_d = cuda.to_device(self.c_neighs, stream=self.stream)
                 neighs_d = cuda.to_device(self.neighs, stream=self.stream)
 
-                k_ys.k_ys_mcs_graph[bpg, tpb, self.stream](
+                k_ys.k_ys_mcs_graph[bpg, tpb, self.stream](  # type: ignore
                     self.n_agents,
                     w_d,
                     r_d,
@@ -453,9 +406,9 @@ class GPUEnsemble:
     Methods:
         MCS(steps): Performs a Monte Carlo simulation for the specified number of steps.
         save_wealths(filepath): Saves the wealths of the models to a file.
-        get_gini(): Computes the mean and standard deviation of the Gini coefficients for the models.
-        get_n_active(): Computes the mean and standard deviation of the number of active agents for the models.
-        get_n_frozen(): Computes the mean and standard deviation of the number of frozen agents for the models.
+        get_mean_gini(): Computes the mean and standard deviation of the Gini coefficients for the models.
+        get_mean_n_active(): Computes the mean and standard deviation of the number of active agents for the models.
+        get_mean_n_frozen(): Computes the mean and standard deviation of the number of frozen agents for the models.
     """
 
     def __init__(
@@ -518,7 +471,7 @@ class GPUEnsemble:
                 filepath, np.array([[self.models[i].w] for i in range(self.n_streams)])
             )
 
-    def get_gini(self):
+    def get_mean_gini(self):
         """
         Computes the mean and standard deviation of the Gini coefficients for the models.
 
@@ -528,7 +481,7 @@ class GPUEnsemble:
         ginis = [measures.gini(model.w) for model in self.models]
         return np.mean(ginis), np.std(ginis)
 
-    def get_n_active(self):
+    def get_mean_n_active(self):
         """
         Computes the mean and standard deviation of the number of active agents for the models.
 
@@ -538,7 +491,7 @@ class GPUEnsemble:
         n_active = [measures.num_actives(model.w, model.w_min) for model in self.models]
         return np.mean(n_active), np.std(n_active)
 
-    def get_n_frozen(self):
+    def get_mean_n_frozen(self):
         """
         Computes the mean and standard deviation of the number of frozen agents for the models (only works if a graph is present).
 

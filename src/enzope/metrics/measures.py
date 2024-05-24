@@ -35,7 +35,7 @@ def palma_ratio(w):
     """
     w_sorted = np.sort(w)
     n = len(w)
-    w_top = np.sum(w_sorted[-int(0.1 * n) :])
+    w_top = np.sum(w_sorted[-int(0.1 * n):])
     w_bot = np.sum(w_sorted[: int(0.4 * n)])
     return w_top / w_bot
 

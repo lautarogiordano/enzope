@@ -1,6 +1,10 @@
 import warnings
 
 from numba import cuda
+from numba.cuda.random import xoroshiro128p_uniform_float32
+
+from .locks import double_lock, double_unlock
+
 from numba.core.errors import (
     NumbaDeprecationWarning,
     NumbaPendingDeprecationWarning,
@@ -11,11 +15,6 @@ from numba.core.errors import (
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 warnings.simplefilter("ignore", category=NumbaDeprecationWarning)
 warnings.simplefilter("ignore", category=NumbaPendingDeprecationWarning)
-
-
-from numba.cuda.random import xoroshiro128p_uniform_float32
-
-from .locks import *
 
 
 # Yard-Sale kernel for mean-field run

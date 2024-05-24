@@ -152,7 +152,6 @@ def geographical_threshold_graph_custom(
 
     # if p_dist is not supplied, use default r^-2
     if p_dist is None:
-
         def p_dist(r):
             return r**-2
 

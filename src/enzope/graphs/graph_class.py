@@ -39,22 +39,16 @@ class BaseGraph:
     def __init__(
         self,
         n_nodes,
-        # upd_w=np.inf,
-        # upd_graph=np.inf,
-        # upd_plot=np.inf,
         figpath=os.getcwd(),
         plotable=False,
     ):
         self.n_nodes = n_nodes
-        # self.upd_w = upd_w
-        # self.upd_graph = upd_graph
-        # self.upd_plot = upd_plot
-        self.G = None
+        self.G = nx.empty_graph(n_nodes)
 
         if plotable:
             self.fig, self.ax = plt.subplots(dpi=150)
-            self.ax.set_xlim([-0.03, 1.03])
-            self.ax.set_ylim([-0.03, 1.03])
+            self.ax.set_xlim(-0.03, 1.03)
+            self.ax.set_ylim(-0.03, 1.03)
             plt.close(self.fig)
 
         if figpath is not None:
@@ -216,7 +210,7 @@ class GTG(BaseGraph):
             self.G,
             node_size=node_size,
             width=0.2,
-            pos=self.posi,
+            pos=self.posi if self.posi is not None else nx.spring_layout(self.G),
             node_color=node_colors,
             edge_color=edge_colors,
             ax=self.ax,
