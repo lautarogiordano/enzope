@@ -68,7 +68,7 @@ class CPUModel(object):
         n_agents=100,
         G=None,
         interaction=yard_sale,
-        f=0,
+        f=0.,
         w_min=3e-17,
         w_0=None,
         r_min=0,
@@ -246,9 +246,9 @@ class CPUModel(object):
         print(f"Graph: {self.G}")
         print(f"Interaction: {self.interaction}")
         print(f"f: {self.f}")
-        print(f"Current Gini: {measures.gini(self.w)}")
-        print(f"Current Actives: {measures.num_actives(self.w, self.w_min)}")
-        print(f"Richest Agent: {np.max(self.w)}")
+        print(f"Current Gini: {measures.gini(self.w):.4f}")
+        print(f"Current Actives: {measures.num_actives(self.w, self.w_min):.4f}")
+        print(f"Richest Agent wealth: {np.max(self.w)}")
         print("------------------")
 
 
