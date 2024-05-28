@@ -2,6 +2,7 @@ import warnings
 import os
 import pickle
 from tqdm import tqdm
+import concurrent.futures
 
 import numpy as np
 from numba import cuda
@@ -40,6 +41,7 @@ class CPUModel(object):
         upd_w_every (float, optional): Frequency of updating the weights of the graph. Defaults to np.inf.
         upd_graph_every (float, optional): Frequency of updating the graph. Defaults to np.inf.
         plot_every (float, optional): Frequency of plotting. Defaults to np.inf.
+        seed (int, optional): Random seed. Defaults to None.
 
     Attributes:
         r (ndarray): Array of risks for each agent.
@@ -60,7 +62,6 @@ class CPUModel(object):
         save(filename, filepath): Save the model's state to a Pickle file.
         load(filename, filepath): Load the model's state from a Pickle file.
         info(): Print information about the model.
-
     """
 
     def __init__(
@@ -68,7 +69,7 @@ class CPUModel(object):
         n_agents=100,
         G=None,
         interaction=yard_sale,
-        f=0.,
+        f=0.0,
         w_min=3e-17,
         w_0=None,
         r_min=0,
@@ -77,19 +78,10 @@ class CPUModel(object):
         upd_w_every=np.inf,
         upd_graph_every=np.inf,
         plot_every=np.inf,
+        seed=None,
     ):
         self.n_agents = n_agents
         self.w_min = w_min
-        # Initialize n agents with random risks and wealth between (0, 1]
-        # and normalize wealth
-        assert r_min < r_max
-        self.r = np.random.uniform(r_min, r_max, self.n_agents).astype(np.float32)
-        if w_0 is not None:
-            self.w = w_0
-        else:
-            self.w = np.random.rand(self.n_agents).astype(np.float32)
-            self.w /= np.sum(self.w)
-        self.w_old = np.copy(self.w)
         self.f = f
         self.G = G if G is not None else None
         self.interaction = interaction
@@ -98,7 +90,23 @@ class CPUModel(object):
         self.plot = plot_every
         # Esto es para muestrear el calculo del gini
         self.measure_every = measure_every
+        # Semilla random
+        self.seed = seed
+        if seed is not None:
+            np.random.seed(seed)
 
+        # Initialize n agents with random risks and wealth between (0, 1]
+        # and normalize wealth
+        assert r_min < r_max, "r_min should be less than r_max"
+        self.r = np.random.uniform(r_min, r_max, self.n_agents).astype(np.float32)
+        if w_0 is not None:
+            self.w = w_0
+        else:
+            self.w = np.random.rand(self.n_agents).astype(np.float32)
+            self.w /= np.sum(self.w)
+        self.w_old = np.copy(self.w)
+
+        # Initialize measures
         self.gini = [measures.gini(self.w)]
         self.palma = [measures.palma_ratio(self.w)]
         self.n_active = [measures.num_actives(self.w, self.w_min)]
@@ -153,7 +161,16 @@ class CPUModel(object):
         loser = i if winner == j else j
         return winner, loser
 
-    def MCS(self, steps):  # sourcery skip: remove-unnecessary-else
+    def update_metrics(self):
+        """Update model metrics."""
+        self.gini.append(measures.gini(self.w))
+        self.palma.append(measures.palma_ratio(self.w))
+        self.n_active.append(measures.num_actives(self.w, self.w_min))
+        if self.G is not None:
+            self.n_frozen.append(measures.num_frozen(self.w, self.w_min, self.G))
+        self.liquidity.append(measures.liquidity(self.w, self.w_old))
+
+    def run(self, steps):  # sourcery skip: remove-unnecessary-else
         """
         Main MC loop
 
@@ -161,7 +178,7 @@ class CPUModel(object):
             steps (int): The number of steps to run the MC loop.
 
         """
-        for mcs in range(1, steps):
+        for mcs in tqdm(range(1, steps + 1)):
             self.w_old[:] = self.w
 
             if self.G and mcs % self.plot == 0:
@@ -177,10 +194,8 @@ class CPUModel(object):
 
                     winner, loser = self.choose_winner(i, j)
 
-                    if self.w[loser] < dw:
-                        continue
-
-                    else:
+                    # Do the transaction only if the loser has enough wealth
+                    if self.w[loser] >= dw:
                         self.w[winner] += dw
                         self.w[loser] -= dw
 
@@ -194,14 +209,7 @@ class CPUModel(object):
 
             # After self.measure_every MCS append new Gini index
             if (mcs + 1) % self.measure_every == 0:
-                self.gini.append(measures.gini(self.w))
-                self.palma.append(measures.palma_ratio(self.w))
-                self.n_active.append(measures.num_actives(self.w, self.w_min))
-                if self.G is not None:
-                    self.n_frozen.append(
-                        measures.num_frozen(self.w, self.w_min, self.G)
-                    )
-                self.liquidity.append(measures.liquidity(self.w, self.w_old))
+                self.update_metrics()
 
     def save(self, filename="default", filepath=os.getcwd()):
         """
@@ -211,13 +219,16 @@ class CPUModel(object):
             filename (str): The name of the file to save the state to. Defaults to 'default'.
             filepath (str): The path to the file. Defaults to the current working directory.
         """
-        if filename == "default":
-            graph = "mean_field" if self.G is None else "graph"
-            filename = (
-                f"model_agents={self.n_agents}_f={self.f}_mcs={len(self.gini)}_{graph}"
-            )
-        with open(os.path.join(filepath, f"{filename}.pkl"), "wb") as f:
-            pickle.dump(self.__dict__, f)
+        try:
+            if filename == "default":
+                graph = "mean_field" if self.G is None else "graph"
+                filename = (
+                    f"model_agents={self.n_agents}_f={self.f}_mcs={len(self.gini)}_{graph}"
+                )
+            with open(os.path.join(filepath, f"{filename}.pkl"), "wb") as f:
+                pickle.dump(self.__dict__, f)
+        except Exception as e:
+            print(f"Error saving model: {e}")
 
     def load(self, filename, filepath=os.getcwd()):
         """
@@ -227,8 +238,11 @@ class CPUModel(object):
             filename (str): The name of the file to load the state from.
             filepath (str): The path to the file. Defaults to the current working directory.
         """
-        with open(os.path.join(filepath, f"{filename}.pkl"), "rb") as f:
-            self.__dict__ = pickle.load(f)
+        try:
+            with open(os.path.join(filepath, f"{filename}.pkl"), "rb") as f:
+                self.__dict__ = pickle.load(f)
+        except Exception as e:
+            print(f"Error loading model: {e}")
 
     def info(self):
         """
@@ -246,10 +260,66 @@ class CPUModel(object):
         print(f"Graph: {self.G}")
         print(f"Interaction: {self.interaction}")
         print(f"f: {self.f}")
+        print(f"w_min: {self.w_min}")
+        print(f"Seed: {self.seed}")
         print(f"Current Gini: {measures.gini(self.w):.4f}")
         print(f"Current Actives: {measures.num_actives(self.w, self.w_min):.4f}")
         print(f"Richest Agent wealth: {np.max(self.w)}")
         print("------------------")
+
+
+# Probando CPUEnsemble de gpt:
+class CPUEnsemble:
+    def __init__(self, n_models, model_params, seed=None):
+        self.n_models = n_models
+        self.models = []
+        self.seed = seed
+        if seed is not None:
+            np.random.seed(seed)
+            # self.seeds = np.random.randint(0, 10000, size=n_models)
+        # else:
+            # self.seeds = [None] * n_models
+        
+        for i in range(n_models):
+            params = model_params.copy()
+            # params['seed'] = self.seed[i]
+            self.models.append(CPUModel(**params))
+
+    def run(self, steps):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(model.MCS, steps) for model in self.models]
+            for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+                future.result()
+
+    def save_ensemble(self, filepath=os.getcwd()):
+        for idx, model in enumerate(self.models):
+            model.save(filename=f"model_{idx}", filepath=filepath)
+
+    def load_ensemble(self, n_models, filepath=os.getcwd()):
+        self.models = []
+        for idx in range(n_models):
+            model = CPUModel()
+            model.load(filename=f"model_{idx}", filepath=filepath)
+            self.models.append(model)
+
+    def aggregate_results(self):
+        """Aggregate results from all models in the ensemble."""
+        all_gini = np.array([model.gini for model in self.models])
+        all_palma = np.array([model.palma for model in self.models])
+        all_n_active = np.array([model.n_active for model in self.models])
+        all_liquidity = np.array([model.liquidity for model in self.models])
+
+        mean_gini = np.mean(all_gini, axis=0)
+        mean_palma = np.mean(all_palma, axis=0)
+        mean_n_active = np.mean(all_n_active, axis=0)
+        mean_liquidity = np.mean(all_liquidity, axis=0)
+
+        return {
+            'mean_gini': mean_gini,
+            'mean_palma': mean_palma,
+            'mean_n_active': mean_n_active,
+            'mean_liquidity': mean_liquidity,
+        }
 
 
 class GPUModel(object):
