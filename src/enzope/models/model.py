@@ -285,14 +285,16 @@ class CPUEnsemble:
             # params['seed'] = self.seed[i]
             self.models.append(CPUModel(**params))
 
-    def run(self, steps):
-        # Con threads (me da mas lento en los casos que me importan)
-        # with concurrent.futures.ThreadPoolExecutor() as executor:
-        #     futures = [executor.submit(model.run, steps) for model in self.models]
-        #     for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
-        #         future.result()
-        for model in self.models:
-            model.run(steps)
+    def run(self, steps, parallel=False):
+        if parallel:
+            # Con threads (me da mas lento en los casos que me importan)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(model.run, steps) for model in self.models]
+                for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+                    future.result()
+        else:
+            for model in self.models:
+                model.run(steps)
 
     def save_ensemble(self, filepath=os.getcwd()):
         for idx, model in enumerate(self.models):
