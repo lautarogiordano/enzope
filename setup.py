@@ -17,17 +17,17 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 setup(
    name="enzope",  # Required
 
-   version="0.0.22",  # Required
+   version="0.0.25",  # Required
    
-   description="Agent based modelling in complex networks",  # Optional
+   description="Agent based modelling in complex networks",
    
-   long_description=long_description,  # Optional
-   long_description_content_type="text/markdown",  # Optional (see note above)
+   long_description=long_description,
+   long_description_content_type="text/markdown",  
+
+   author="Lautaro Giordano",
+   author_email="giordanolautaro@gmail.com",
    
-   author="Lautaro Giordano",  # Optional
-   author_email="giordanolautaro@gmail.com",  # Optional
-   
-   classifiers=[  # Optional
+   classifiers=[
        "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
         "Topic :: Software Development :: Build Tools",
@@ -35,17 +35,17 @@ setup(
         "Programming Language :: Python :: 3",
     ],
    
-    keywords="sample, setuptools, development",  # Optional
+    keywords="sample, setuptools, development",
    
-    package_dir={"": "src"},  # Optional
+    package_dir={"": "src"},
     packages=find_packages(where="src"),  # Required
 
     python_requires=">=3.7, <4",
     install_requires=["numpy >= 1.24",
                       "numba >= 0.0.57",
-                      "networkx >= 3.0"],  # Optional
+                      "networkx >= 3.0"],
 
-    project_urls={  # Optional
+    project_urls={
         "Source": "https://github.com/lautarogiordano/enzope/",
     },
 )

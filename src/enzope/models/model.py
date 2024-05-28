@@ -95,8 +95,8 @@ class CPUModel(object):
         if seed is not None:
             np.random.seed(seed)
 
-        # Initialize n agents with random risks and wealth between (0, 1]
-        # and normalize wealth
+        # Initialize n agents with random risks and wealth between (r_min, r_max]
+        # and normalize wealth 
         assert r_min < r_max, "r_min should be less than r_max"
         self.r = np.random.uniform(r_min, r_max, self.n_agents).astype(np.float32)
         if w_0 is not None:
@@ -286,10 +286,13 @@ class CPUEnsemble:
             self.models.append(CPUModel(**params))
 
     def run(self, steps):
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(model.MCS, steps) for model in self.models]
-            for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
-                future.result()
+        # Con threads (me da mas lento en los casos que me importan)
+        # with concurrent.futures.ThreadPoolExecutor() as executor:
+        #     futures = [executor.submit(model.run, steps) for model in self.models]
+        #     for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+        #         future.result()
+        for model in self.models:
+            model.run(steps)
 
     def save_ensemble(self, filepath=os.getcwd()):
         for idx, model in enumerate(self.models):
