@@ -96,7 +96,7 @@ class CPUModel(object):
             np.random.seed(seed)
 
         # Initialize n agents with random risks and wealth between (r_min, r_max]
-        # and normalize wealth 
+        # and normalize wealth
         assert r_min < r_max, "r_min should be less than r_max"
         self.r = np.random.uniform(r_min, r_max, self.n_agents).astype(np.float32)
         if w_0 is not None:
@@ -222,9 +222,7 @@ class CPUModel(object):
         try:
             if filename == "default":
                 graph = "mean_field" if self.G is None else "graph"
-                filename = (
-                    f"model_agents={self.n_agents}_f={self.f}_mcs={len(self.gini)}_{graph}"
-                )
+                filename = f"model_agents={self.n_agents}_f={self.f}_mcs={len(self.gini)}_{graph}"
             with open(os.path.join(filepath, f"{filename}.pkl"), "wb") as f:
                 pickle.dump(self.__dict__, f)
         except Exception as e:
@@ -270,6 +268,27 @@ class CPUModel(object):
 
 # Probando CPUEnsemble de gpt:
 class CPUEnsemble:
+    """
+    A class representing an ensemble of CPU models.
+
+    Parameters:
+    - n_models (int): The number of models in the ensemble.
+    - model_params (dict): The parameters for each model in the ensemble.
+    - seed (int, optional): The seed for random number generation. Defaults to None.
+
+    Attributes:
+    - n_models (int): The number of models in the ensemble.
+    - models (list): The list of CPUModel instances in the ensemble.
+    - seed (int): The seed for random number generation.
+
+    Methods:
+    - __init__(self, n_models, model_params, seed=None): Initializes the CPUEnsemble instance.
+    - run(self, steps, parallel=False): Runs the models in the ensemble for the specified number of steps.
+    - save_ensemble(self, filepath=os.getcwd()): Saves the ensemble models to disk.
+    - load_ensemble(self, n_models, filepath=os.getcwd()): Loads the ensemble models from disk.
+    - aggregate_results(self): Aggregates the results from all models in the ensemble.
+    """
+
     def __init__(self, n_models, model_params, seed=None):
         self.n_models = n_models
         self.models = []
@@ -278,8 +297,8 @@ class CPUEnsemble:
             np.random.seed(seed)
             # self.seeds = np.random.randint(0, 10000, size=n_models)
         # else:
-            # self.seeds = [None] * n_models
-        
+        # self.seeds = [None] * n_models
+
         for i in range(n_models):
             params = model_params.copy()
             # params['seed'] = self.seed[i]
@@ -290,7 +309,9 @@ class CPUEnsemble:
             # Con threads (me da mas lento en los casos que me importan)
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(model.run, steps) for model in self.models]
-                for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+                for future in tqdm(
+                    concurrent.futures.as_completed(futures), total=len(futures)
+                ):
                     future.result()
         else:
             for model in self.models:
@@ -320,10 +341,10 @@ class CPUEnsemble:
         mean_liquidity = np.mean(all_liquidity, axis=0)
 
         return {
-            'mean_gini': mean_gini,
-            'mean_palma': mean_palma,
-            'mean_n_active': mean_n_active,
-            'mean_liquidity': mean_liquidity,
+            "mean_gini": mean_gini,
+            "mean_palma": mean_palma,
+            "mean_n_active": mean_n_active,
+            "mean_liquidity": mean_liquidity,
         }
 
 
@@ -362,7 +383,7 @@ class GPUModel(object):
         self,
         n_agents=100,
         G=None,
-        f=0,
+        f=0.0,
         w_min=3e-17,
         w_0=None,
         r_min=0,
@@ -370,11 +391,15 @@ class GPUModel(object):
         tpb=32,
         bpg=512,
         stream=None,
+        seed=None,
     ):
         self.n_agents = n_agents
         self.w_min = w_min
         self.G = G
 
+        self.seed = seed
+        if seed is not None:
+            np.random.seed(seed)
         # Initialize n agents with random risks and wealth between (0, 1]
         # and normalize wealth
         self.w = np.random.rand(self.n_agents).astype(np.float32)
@@ -393,7 +418,12 @@ class GPUModel(object):
         self.tpb = tpb
         self.bpg = bpg
 
-    def MCS(self, steps, tpb=None, bpg=None, rng_state=None):
+        random_seed = (
+            seed if seed is not None else np.random.randint(0, 0x7FFFFFFFFFFFFFFF)
+        )
+        self.rng_state = create_xoroshiro128p_states(self.n_agents, seed=random_seed)
+
+    def run(self, steps, tpb=None, bpg=None, rng_state=None):
         """
         Perform Monte Carlo simulation.
 
@@ -404,18 +434,15 @@ class GPUModel(object):
             rng_state (ndarray, optional): Random number generator state. Defaults to None.
 
         """
+        # Set default values if not provided
+        tpb = self.tpb if tpb is None else tpb
+        bpg = self.bpg if bpg is None else bpg
+        rng_state = self.rng_state if rng_state is None else rng_state
+
         with cuda.pinned(self.w):
             w_d = cuda.to_device(self.w, stream=self.stream)
             r_d = cuda.to_device(self.r, stream=self.stream)
             m_d = cuda.to_device(self.m, stream=self.stream)
-
-            if tpb is None or bpg is None:
-                tpb = self.tpb
-                bpg = self.bpg
-
-            if rng_state is None:
-                random_seed = np.random.randint(0, 0x7FFFFFFFFFFFFFFF)
-                rng_state = create_xoroshiro128p_states(self.n_agents, seed=random_seed)
 
             # No graph -> Mean field kernel
             if self.G is None:
@@ -447,12 +474,10 @@ class GPUModel(object):
                     steps,
                     rng_state,
                 )
-
                 del c_neighs_d, neighs_d
 
             w_d.copy_to_host(self.w, self.stream)
         del w_d, r_d, m_d
-
         cuda.synchronize()
 
 
@@ -487,15 +512,26 @@ class GPUEnsemble:
     """
 
     def __init__(
-        self, n_models=1, n_agents=1000, tpb=32, bpg=512, graphs=None, **kwargs
+        self,
+        n_models=1,
+        n_agents=1000,
+        tpb=32,
+        bpg=512,
+        graphs=None,
+        random_seeds=None,
+        **kwargs,
     ):
         self.n_streams = n_models
         self.n_agents = n_agents
         self.tpb = tpb
         self.bpg = bpg
         self.graphs = graphs
-        random_seeds = np.random.randint(0, 0x7FFFFFFFFFFFFFFF, size=self.n_streams)
-
+        random_seeds = (
+            random_seeds
+            if random_seeds is not None
+            else np.random.randint(0, 0x7FFFFFFFFFFFFFFF, size=self.n_streams)
+        )
+        
         # Creation of GPU arrays
         if self.n_streams == 1:
             self.streams = [cuda.default_stream()]
@@ -504,12 +540,19 @@ class GPUEnsemble:
 
         if self.graphs is None:
             self.models = [
-                GPUModel(n_agents=n_agents, stream=stream, **kwargs)
+                GPUModel(n_agents=n_agents, stream=stream, tpb=tpb, bpg=bpg, **kwargs)
                 for stream in self.streams
             ]
         else:
             self.models = [
-                GPUModel(n_agents=n_agents, stream=stream, G=self.graphs[i], **kwargs)
+                GPUModel(
+                    n_agents=n_agents,
+                    stream=stream,
+                    G=self.graphs[i],
+                    tpb=tpb,
+                    bpg=bpg,
+                    **kwargs,
+                )
                 for i, stream in enumerate(self.streams)
             ]
 
@@ -518,7 +561,7 @@ class GPUEnsemble:
             for i in range(self.n_streams)
         ]
 
-    def MCS(self, steps, verbose=False):
+    def run(self, steps, verbose=False):
         """
         Performs a Monte Carlo simulation for the specified number of steps.
 
@@ -526,7 +569,7 @@ class GPUEnsemble:
             steps (int): Number of simulation steps to perform.
         """
         for model, rng_state in tqdm(zip(self.models, self.rng_states)):
-            model.MCS(steps, self.tpb, self.bpg, rng_state)
+            model.run(steps, self.tpb, self.bpg, rng_state)
 
     def save_wealths(self, filepath=None):
         """
