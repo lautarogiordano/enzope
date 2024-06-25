@@ -23,6 +23,217 @@ warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
 warnings.simplefilter("ignore", category=NumbaDeprecationWarning)
 warnings.simplefilter("ignore", category=NumbaPendingDeprecationWarning)
 
+class CPUModel_modified(object):
+    """
+    Represents a CPU model for simulating agent-based economic interactions.
+
+    Args:
+        n_agents (int): The number of agents in the model.
+        G (Graph, optional): The graph representing the network connections between agents. Default is None, which is equivalent to a mean-field model.
+        interaction (function, optional): Function that represents the interaction between two agents. Defaults to yard_sale.
+        f (float, optional): A parameter used in the winner selection process.
+        w_min (float, optional): Minimum value for w. Defaults to 1e-17.
+        w_0 (ndarray, optional): Initial wealth distribution of the agents.
+        r_min (float, optional): Minimum value for the risk of the agents. Defaults to 0.
+        r_max (float, optional): Maximum value for the risk of the agents. Defaults to 1.
+        measure_every (float, optional): Frequency of measuring the gini coefficient, the fraction of active agents, frozen agents (if working with a graph) and liquidity. Defaults to np.inf.
+        upd_w_every (float, optional): Frequency of updating the weights of the graph. Defaults to np.inf.
+        upd_graph_every (float, optional): Frequency of updating the graph. Defaults to np.inf.
+        plot_every (float, optional): Frequency of plotting. Defaults to np.inf.
+        seed (int, optional): Random seed. Defaults to None.
+
+    Attributes:
+        r (ndarray): Array of risks for each agent.
+        w (ndarray): Array of wealth values for each agent.
+        w_old (ndarray): Copy of the previous wealth distribution.
+        f (float): The value of the parameter used in the winner selection process.
+        G (Graph): The graph representing the network connections between agents.
+        gini (list): List of Gini index values at each step.
+        palma (list): List of Palma ratio values at each step.
+        n_active (list): List of the number of active agents at each step.
+        liquidity (list): List of liquidity values at each step.
+        n_frozen (list): List of the number of frozen agents at each step.
+
+    Methods:
+        get_opponents(): Get the opponents for each agent.
+        choose_winner(i, j): Choose a winner between two agents based on their wealth.
+        MCS(steps): Run the main Monte Carlo loop.
+        save(filename, filepath): Save the model's state to a Pickle file.
+        load(filename, filepath): Load the model's state from a Pickle file.
+        info(): Print information about the model.
+    """
+
+    def __init__(
+        self,
+        n_agents=100,
+        G=None,
+        interaction=yard_sale,
+        f=0.0,
+        w_min=3e-17,
+        w_0=None,
+        r_min=0,
+        r_max=1,
+        measure_every=np.inf,
+        upd_w_every=np.inf,
+        upd_graph_every=np.inf,
+        plot_every=np.inf,
+        seed=None,
+    ):
+        self.n_agents = n_agents
+        self.w_min = w_min
+        self.f = f
+        self.G = G if G is not None else None
+        self.interaction = interaction
+        self.update_w = upd_w_every
+        self.update_links = upd_graph_every
+        self.plot = plot_every
+        # Esto es para muestrear el calculo del gini
+        self.measure_every = measure_every
+        # Semilla random
+        self.seed = seed
+        if seed is not None:
+            np.random.seed(seed)
+
+        # Initialize n agents with random risks and wealth between (r_min, r_max]
+        # and normalize wealth
+        assert r_min < r_max, "r_min should be less than r_max"
+        self.r = np.random.uniform(r_min, r_max, self.n_agents).astype(np.float32)
+        if w_0 is not None:
+            self.w = w_0
+        else:
+            self.w = np.random.rand(self.n_agents).astype(np.float32)
+            self.w /= np.sum(self.w)
+        self.w_old = np.copy(self.w)
+
+        ### Array de agentes activos
+        self.active_agents = np.where(self.w > self.w_min)[0]
+
+        # Initialize measures
+        self.gini = [measures.gini(self.w)]
+        self.palma = [measures.palma_ratio(self.w)]
+        self.n_active = [measures.num_actives(self.w, self.w_min)]
+        self.liquidity = []
+        self.n_frozen = (
+            [measures.num_frozen(self.w, self.w_min, self.G)]
+            if self.G is not None
+            else []
+        )
+
+    def get_opponents(self):
+        """
+        Get an array of opponents for each agent.
+
+        If self.G is None, generate a random array of opponents where each element
+        represents the index of an opponent for the corresponding agent. The generated
+        array ensures that no agent is assigned itself as an opponent.
+
+        If self.G is not None, call the `get_opponents_cpu` method of self.G to get
+        the opponents array.
+
+        Returns:
+            numpy.ndarray: Array of opponents for each agent.
+        """
+        
+        if self.G is None:
+            active_agents_count = len(self.active_agents)
+            random_indices = np.random.randint(0, active_agents_count, active_agents_count)
+            random_opponents = self.active_agents[random_indices]
+            indices = np.arange(active_agents_count)
+            # Create array of random numbers that are not equal to the index
+            # If i=j then assign j'=i+1 (j'=0 if i=N-1)
+            random_opponents = np.where(
+                random_opponents == self.active_agents[indices],
+                self.active_agents[(indices + 1) % active_agents_count],
+                random_opponents
+            )
+        else:
+            random_opponents = self.G.get_opponents_cpu()
+        return random_opponents
+
+
+    def choose_winner(self, i, j):
+        """
+        Chooses a winner between two options based on their weights.
+
+        Parameters:
+            i (int): The index of the first option.
+            j (int): The index of the second option.
+
+        Returns:
+            int: The index of the chosen winner.
+        """
+        p = 0.5 + self.f * ((self.w[j] - self.w[i]) / (self.w[i] + self.w[j]))
+        winner = np.random.choice([i, j], p=[p, 1 - p])
+        loser = i if winner == j else j
+        return winner, loser
+
+    def update_metrics(self):
+        """Update model metrics."""
+        self.gini.append(measures.gini(self.w))
+        self.palma.append(measures.palma_ratio(self.w))
+        self.n_active.append(measures.num_actives(self.w, self.w_min))
+        if self.G is not None:
+            self.n_frozen.append(measures.num_frozen(self.w, self.w_min, self.G))
+        self.liquidity.append(measures.liquidity(self.w, self.w_old))
+
+    def run(self, steps):  # sourcery skip: remove-unnecessary-else
+        """
+        Main MC loop
+
+        Args:
+            steps (int): The number of steps to run the MC loop.
+
+        """
+        for mcs in tqdm(range(1, steps + 1)):
+            self.w_old[:] = self.w
+
+            if self.G and mcs % self.plot == 0:
+                self.G.plot_snapshot(self.w_min, mcs, mode="save")
+
+            opps = self.get_opponents()
+
+            for idx, i in enumerate(self.active_agents):
+                j = opps[idx]
+                # Check both agents have w > w_min and node is not isolated
+                if self.w[i] > self.w_min and self.w[j] > self.w_min and j != -1:
+                    # Yard-Sale algorithm
+                    dw = self.interaction(self.r[i], self.w[i], self.r[j], self.w[j])
+                    winner, loser = self.choose_winner(i, j)
+                    # Do the transaction only if the loser has enough wealth
+                    if self.w[loser] >= dw:
+                        self.w[winner] += dw
+                        self.w[loser] -= dw
+
+            # Eliminar agentes que se vuelven inactivos
+            self.active_agents = self.active_agents[self.w[self.active_agents] > self.w_min]
+
+
+            for i, j in enumerate(opps):
+                # Check both agents have w > w_min and node is not isolated
+                if self.w[i] > self.w_min and self.w[j] > self.w_min and j != -1:
+                    # Yard-Sale algorithm
+                    dw = self.interaction(self.r[i], self.w[i], self.r[j], self.w[j])
+
+                    winner, loser = self.choose_winner(i, j)
+
+                    # Do the transaction only if the loser has enough wealth
+                    if self.w[loser] >= dw:
+                        self.w[winner] += dw
+                        self.w[loser] -= dw
+
+            # After self.update_w update weights
+            if self.G and mcs % self.update_w == 0:
+                self.G.update_weights(self.w)
+
+            # Recompute the links if the network is dynamic
+            if (mcs + 1) % self.update_links == 0 and self.G is not None:
+                self.G.update_graph()
+
+            # After self.measure_every MCS append new Gini index
+            if (mcs + 1) % self.measure_every == 0:
+                self.update_metrics()
+
+
 
 class CPUModel(object):
     """
