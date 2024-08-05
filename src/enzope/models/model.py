@@ -523,7 +523,7 @@ class CPUEnsemble:
             # Con threads (me da mas lento en los casos que me importan)
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(model.run, steps) for model in self.models]
-                for future in concurrent.futures.as_completed(futures), total=len(futures):
+                for future in concurrent.futures.as_completed(futures):
                     future.result()
         else:
             for i, model in enumerate(self.models):
