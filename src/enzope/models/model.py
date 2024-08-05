@@ -1,7 +1,6 @@
 import warnings
 import os
 import pickle
-from tqdm import tqdm
 import concurrent.futures
 
 import numpy as np
@@ -17,6 +16,7 @@ from numba.core.errors import (
 from ..kernels import k_ys
 from ..metrics import measures
 from ..trades.ys import yard_sale
+from ..utils.misc import print_progress_bar
 
 # Filtro algunos warnings que tira numba
 warnings.simplefilter("ignore", category=NumbaPerformanceWarning)
@@ -184,7 +184,7 @@ class CPUModel_modified(object):
             steps (int): The number of steps to run the MC loop.
 
         """
-        for mcs in tqdm(range(1, steps + 1)):
+        for mcs in range(1, steps + 1):
             self.w_old[:] = self.w
 
             if self.G and mcs % self.plot == 0:
@@ -381,7 +381,7 @@ class CPUModel(object):
             self.n_frozen.append(measures.num_frozen(self.w, self.w_min, self.G))
         self.liquidity.append(measures.liquidity(self.w, self.w_old))
 
-    def run(self, steps):  # sourcery skip: remove-unnecessary-else
+    def run(self, steps, verbose=False):  # sourcery skip: remove-unnecessary-else
         """
         Main MC loop
 
@@ -389,7 +389,10 @@ class CPUModel(object):
             steps (int): The number of steps to run the MC loop.
 
         """
-        for mcs in tqdm(range(1, steps + 1)):
+        for mcs in range(1, steps + 1):
+            if verbose:
+                print_progress_bar(mcs, steps)
+
             self.w_old[:] = self.w
 
             if self.G and mcs % self.plot == 0:
@@ -515,17 +518,18 @@ class CPUEnsemble:
             # params['seed'] = self.seed[i]
             self.models.append(CPUModel(**params))
 
-    def run(self, steps, parallel=False):
+    def run(self, steps, verbose=False, parallel=False):
         if parallel:
             # Con threads (me da mas lento en los casos que me importan)
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = [executor.submit(model.run, steps) for model in self.models]
-                for future in tqdm(
-                    concurrent.futures.as_completed(futures), total=len(futures)
-                ):
+                for future in concurrent.futures.as_completed(futures), total=len(futures):
                     future.result()
         else:
-            for model in self.models:
+            for i, model in enumerate(self.models):
+                if verbose:
+                    print_progress_bar(i+1, self.n_models+1)
+
                 model.run(steps)
 
     def save_ensemble(self, filepath=os.getcwd()):
@@ -779,7 +783,7 @@ class GPUEnsemble:
         Args:
             steps (int): Number of simulation steps to perform.
         """
-        for model, rng_state in tqdm(zip(self.models, self.rng_states)):
+        for model, rng_state in zip(self.models, self.rng_states):
             model.run(steps, self.tpb, self.bpg, rng_state)
 
     def save_wealths(self, filepath=None):
