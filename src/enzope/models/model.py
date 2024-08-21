@@ -544,23 +544,28 @@ class CPUEnsemble:
             self.models.append(model)
 
     def aggregate_results(self):
-        """Aggregate results from all models in the ensemble."""
-        all_gini = np.array([model.gini for model in self.models])
-        all_palma = np.array([model.palma for model in self.models])
-        all_n_active = np.array([model.n_active for model in self.models])
-        all_liquidity = np.array([model.liquidity for model in self.models])
+            """
+            Aggregate the results of all models.
 
-        mean_gini = np.mean(all_gini, axis=0)
-        mean_palma = np.mean(all_palma, axis=0)
-        mean_n_active = np.mean(all_n_active, axis=0)
-        mean_liquidity = np.mean(all_liquidity, axis=0)
+            Returns:
+                A dictionary containing the mean values of gini, palma, n_active, and liquidity.
+            """
+            all_gini = np.array([model.gini for model in self.models])
+            all_palma = np.array([model.palma for model in self.models])
+            all_n_active = np.array([model.n_active for model in self.models])
+            all_liquidity = np.array([model.liquidity for model in self.models])
 
-        return {
-            "mean_gini": mean_gini,
-            "mean_palma": mean_palma,
-            "mean_n_active": mean_n_active,
-            "mean_liquidity": mean_liquidity,
-        }
+            mean_gini = np.mean(all_gini, axis=0)
+            mean_palma = np.mean(all_palma, axis=0)
+            mean_n_active = np.mean(all_n_active, axis=0)
+            mean_liquidity = np.mean(all_liquidity, axis=0)
+
+            return {
+                "mean_gini": mean_gini,
+                "mean_palma": mean_palma,
+                "mean_n_active": mean_n_active,
+                "mean_liquidity": mean_liquidity,
+            }
 
 
 class GPUModel(object):
