@@ -528,7 +528,7 @@ class CPUEnsemble:
         else:
             for i, model in enumerate(self.models):
                 if verbose:
-                    print_progress_bar(i+1, self.n_models+1)
+                    print_progress_bar(i, self.n_models)
 
                 model.run(steps)
 
