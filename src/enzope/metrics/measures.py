@@ -109,8 +109,50 @@ def deciles(w):
     n = len(w)
     w_sorted = np.sort(w)
     size = n // 10
-    deciles = [np.sum(w_sorted[i: i+size]) for i in range(0, n, size)]
+    deciles = [np.sum(w_sorted[i: i + size]) for i in range(0, n, size)]
     return deciles
+
+
+def top10(deciles):
+    """
+    Compute the ratio of the sum of the top 10% of the population to the total sum.
+
+    Parameters:
+    deciles (numpy.ndarray): The deciles of the input array.
+
+    Returns:
+    float: The ratio of the sum of the top 10% of the population to the total sum.
+
+    """
+    return deciles[:, -1] / np.sum(deciles[0, :])
+
+
+def bottom50(deciles):
+    """
+    Compute the ratio of the sum of the bottom 50% of the population to the total sum.
+
+    Parameters:
+    deciles (numpy.ndarray): The deciles of the input array.
+
+    Returns:
+    float: The ratio of the sum of the bottom 50% of the population to the total sum.
+
+    """
+    return np.sum(deciles[:, :5], axis=1) / np.sum(deciles[0, :])
+
+
+def middle40(deciles):
+    """
+    Compute the ratio of the sum of the middle 40% of the population to the total sum.
+
+    Parameters:
+    deciles (numpy.ndarray): The deciles of the input array.
+
+    Returns:
+    float: The ratio of the sum of the middle 40% of the population (above the bottom 50% and below top 10%) to the total sum.
+
+    """
+    return np.sum(deciles[:, 4:9], axis=1) / np.sum(deciles[0, :])
 
 
 def r1(x):

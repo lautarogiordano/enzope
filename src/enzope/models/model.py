@@ -175,7 +175,7 @@ class CPUModel(object):
         if self.G is not None:
             self.n_frozen.append(measures.num_frozen(self.w, self.w_min, self.G))
         self.liquidity.append(measures.liquidity(self.w, self.w_old))
-        self.deciles.append(measures.deciles(self.w))
+        self.deciles.append(measures.deciles(self.w)) # type: ignore
         self.richest.append(np.max(self.w))
 
     def finalize(self):
