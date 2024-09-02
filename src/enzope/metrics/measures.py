@@ -95,10 +95,24 @@ def num_frozen(w, w_min, graph):
     return n_frozen / n
 
 
+def deciles(w):
+    """
+    Compute the deciles of the input array.
+
+    Parameters:
+    w (array-like): The input array.
+
+    Returns:
+    numpy.ndarray: The deciles of the input array.
+
+    """
+    n = len(w)
+    w_sorted = np.sort(w)
+    size = n // 10
+    deciles = [np.sum(w_sorted[i: i+size]) for i in range(0, n, size)]
+    return deciles
+
+
 def r1(x):
     # Esta se usa para generar las gtgs poniengo GTG(..., p_dist=measures.r1)
     return 1 / x
-
-
-# def movility(w, w_old):
-#     return np.mean(np.abs(w - w_old) > 0)
