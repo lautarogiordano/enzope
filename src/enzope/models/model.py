@@ -175,7 +175,7 @@ class CPUModel(object):
         if self.G is not None:
             self.n_frozen.append(measures.num_frozen(self.w, self.w_min, self.G))
         self.liquidity.append(measures.liquidity(self.w, self.w_old))
-        self.deciles.append(measures.deciles(self.w)) # type: ignore
+        self.deciles.append(measures.deciles(self.w))  # type: ignore
         self.richest.append(np.max(self.w))
 
     def finalize(self):
@@ -347,7 +347,7 @@ class CPUEnsemble:
             model.load(filename=f"model_{idx}", filepath=filepath)
             self.models.append(model)
 
-    def aggregate_results(self):
+    def aggregate_results(self, std=False):
         """
         Aggregate the results of all models.
 
@@ -358,18 +358,42 @@ class CPUEnsemble:
         all_palma = np.array([model.palma for model in self.models])
         all_n_active = np.array([model.n_active for model in self.models])
         all_liquidity = np.array([model.liquidity for model in self.models])
+        all_num_frozen = np.array([model.n_frozen for model in self.models]) if model.G is not None else None
 
         mean_gini = np.mean(all_gini, axis=0)
         mean_palma = np.mean(all_palma, axis=0)
         mean_n_active = np.mean(all_n_active, axis=0)
         mean_liquidity = np.mean(all_liquidity, axis=0)
+        mean_num_frozen = np.mean(all_num_frozen, axis=0) if all_num_frozen is not None else None
 
-        return {
-            "mean_gini": mean_gini,
-            "mean_palma": mean_palma,
-            "mean_n_active": mean_n_active,
-            "mean_liquidity": mean_liquidity,
-        }
+        if std:
+            std_gini = np.std(all_gini, axis=0)
+            std_palma = np.std(all_palma, axis=0)
+            std_n_active = np.std(all_n_active, axis=0)
+            std_liquidity = np.std(all_liquidity, axis=0)
+            std_num_frozen = np.std(all_num_frozen, axis=0) if all_num_frozen is not None else None
+
+            return {
+                "mean_gini": mean_gini,
+                "mean_palma": mean_palma,
+                "mean_n_active": mean_n_active,
+                "mean_liquidity": mean_liquidity,
+                "mean_num_frozen": mean_num_frozen,
+                "std_gini": std_gini,
+                "std_palma": std_palma,
+                "std_n_active": std_n_active,
+                "std_liquidity": std_liquidity,
+                "std_num_frozen": std_num_frozen,
+            }
+
+        else:
+            return {
+                "mean_gini": mean_gini,
+                "mean_palma": mean_palma,
+                "mean_n_active": mean_n_active,
+                "mean_liquidity": mean_liquidity,
+                "mean_num_frozen": mean_num_frozen,
+            }
 
 
 class GPUModel(object):
@@ -641,7 +665,38 @@ class GPUEnsemble:
             tuple: A tuple containing the mean and standard deviation of the number of frozen agents.
         """
 
+        if self.graphs is None:
+            return None, None
+
         n_frozen = [
             measures.num_frozen(model.w, model.w_min, model.G) for model in self.models
         ]
         return np.mean(n_frozen), np.std(n_frozen)
+
+    def aggregate_final_results(self, std=False):
+        """
+        Aggregate the final results of all models.
+
+        Returns:
+            A dictionary containing the mean values of gini, palma, n_active, and liquidity.
+        """
+        mean_gini, std_gini = self.get_mean_gini()
+        mean_n_active, std_n_active = self.get_mean_n_active()
+        mean_n_frozen, std_n_frozen = self.get_mean_n_frozen()
+
+        if std:
+            return {
+                "mean_gini": mean_gini,
+                "mean_n_active": mean_n_active,
+                "mean_n_frozen": mean_n_frozen,
+                "std_gini": std_gini,
+                "std_n_active": std_n_active,
+                "std_n_frozen": std_n_frozen,
+            }
+
+        else:
+            return {
+                "mean_gini": mean_gini,
+                "mean_n_active": mean_n_active,
+                "mean_n_frozen": mean_n_frozen,
+            }
