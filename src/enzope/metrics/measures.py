@@ -109,7 +109,7 @@ def deciles(w):
     n = len(w)
     w_sorted = np.sort(w)
     size = n // 10
-    deciles = [np.sum(w_sorted[i: i + size]) for i in range(0, n, size)]
+    deciles = np.array([np.sum(w_sorted[i: i + size]) for i in range(0, n, size)])
     return deciles
 
 
