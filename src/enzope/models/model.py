@@ -138,18 +138,28 @@ class CPUModel(object):
             numpy.ndarray: Array of opponents for each agent.
         """
         if self.G is None:
-            random_array = np.random.randint(0, self.n_agents, self.n_agents)
-            indices = np.arange(0, self.n_agents)
-            # Create array of random numbers that are not equal to the index
-            # If i=j then assign j'=i+1 (j'=0 if i=N-1)
-            random_array = np.where(
-                random_array == indices,
-                (random_array + 1) % self.n_agents,
-                random_array,
-            )
+            # random array shifted from 1 to avoid 0 as increment
+            random_array = np.random.randint(1, self.n_agents, self.n_agents)  # Evita 0 como incremento
+            # modulo n_agents to avoid out of bounds
+            random_array = (np.arange(self.n_agents) + random_array) % self.n_agents  # Garantiza oponentes distintos
         else:
             random_array = self.G.get_opponents_cpu()
         return random_array
+
+        # Pruebo una nueva implementacion algo mas rapida
+        # if self.G is None:
+        #     random_array = np.random.randint(0, self.n_agents, self.n_agents)
+        #     indices = np.arange(0, self.n_agents)
+        #     # Create array of random numbers that are not equal to the index
+        #     # If i=j then assign j'=i+1 (j'=0 if i=N-1)
+        #     random_array = np.where(
+        #         random_array == indices,
+        #         (random_array + 1) % self.n_agents,
+        #         random_array,
+        #     )
+        # else:
+        #     random_array = self.G.get_opponents_cpu()
+        # return random_array
 
     def choose_winner(self, i, j):
         """
@@ -175,12 +185,12 @@ class CPUModel(object):
         if self.G is not None:
             self.n_frozen.append(measures.num_frozen(self.w, self.w_min, self.G))
         self.liquidity.append(measures.liquidity(self.w, self.w_old))
-        self.deciles.append(measures.deciles(self.w))  # type: ignore
+        self.deciles.append(measures.deciles(self.w))
         self.richest.append(np.max(self.w))
 
-    def finalize(self):
-        """Convert some lists to arrays."""
-        self.deciles = np.array(self.deciles)
+    # def finalize(self):
+    #     """Convert some lists to arrays."""
+    #     self.deciles = np.array(self.deciles)
 
     def run(self, steps, verbose=False):  # sourcery skip: remove-unnecessary-else
         """
@@ -227,7 +237,7 @@ class CPUModel(object):
                 self.update_metrics()
 
         # A function that converts some lists to arrays
-        self.finalize()
+        # self.finalize()
 
     def save(self, filename="default", filepath=os.getcwd()):
         """
