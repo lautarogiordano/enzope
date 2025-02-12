@@ -291,10 +291,21 @@ class CPUEnsemble:
     """
     A class representing an ensemble of CPU models.
 
-    Parameters:
-    - n_models (int): The number of models in the ensemble.
-    - model_params (dict): The parameters for each model in the ensemble.
-    - seed (int, optional): The seed for random number generation. Defaults to None.
+    Args:
+        n_models (int): The number of models in the ensemble.
+        seed (int, optional): The seed for random number generation. Defaults to None.
+        n_agents (int): The number of agents in the model.
+        G (Graph, optional): The graph representing the network connections between agents. Default is None, which is equivalent to a mean-field model.
+        interaction (function, optional): Function that represents the interaction between two agents. Defaults to yard_sale.
+        f (float, optional): A parameter used in the winner selection process.
+        w_min (float, optional): Minimum value for w. Defaults to 1e-17.
+        w_0 (ndarray, optional): Initial wealth distribution of the agents.
+        r_min (float, optional): Minimum value for the risk of the agents. Defaults to 0.
+        r_max (float, optional): Maximum value for the risk of the agents. Defaults to 1.
+        measure_every (float, optional): Frequency of measuring the gini coefficient, the fraction of active agents, frozen agents (if working with a graph) and liquidity. Defaults to np.inf.
+        upd_w_every (float, optional): Frequency of updating the weights of the graph. Defaults to np.inf.
+        upd_graph_every (float, optional): Frequency of updating the graph. Defaults to np.inf.
+        plot_every (float, optional): Frequency of plotting. Defaults to np.inf.
 
     Attributes:
     - n_models (int): The number of models in the ensemble.
@@ -309,20 +320,14 @@ class CPUEnsemble:
     - aggregate_results(self): Aggregates the results from all models in the ensemble.
     """
 
-    def __init__(self, n_models, model_params, seed=None):
+    def __init__(self, n_models, seed=None, **kwargs):
         self.n_models = n_models
         self.models = []
         self.seed = seed
         if seed is not None:
             np.random.seed(seed)
-            # self.seeds = np.random.randint(0, 10000, size=n_models)
-        # else:
-        # self.seeds = [None] * n_models
 
-        for i in range(n_models):
-            params = model_params.copy()
-            # params['seed'] = self.seed[i]
-            self.models.append(CPUModel(**params))
+        self.models = [CPUModel(**kwargs) for _ in range(n_models)]
 
     def run(self, steps, verbose=False, parallel=False):
         if parallel:
@@ -426,6 +431,7 @@ class GPUModel(object):
         bpg (int, optional): Blocks per grid. Defaults to 512.
         stream (Stream, optional): CUDA stream. Defaults to None.
         **kwargs: Additional keyword arguments.
+
 
     Attributes:
         w (ndarray): Array of agents' wealth.
