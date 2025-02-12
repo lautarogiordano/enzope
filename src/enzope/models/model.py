@@ -188,10 +188,6 @@ class CPUModel(object):
         self.deciles.append(measures.deciles(self.w))
         self.richest.append(np.max(self.w))
 
-    # def finalize(self):
-    #     """Convert some lists to arrays."""
-    #     self.deciles = np.array(self.deciles)
-
     def run(self, steps, verbose=False):  # sourcery skip: remove-unnecessary-else
         """
         Main MC loop
@@ -235,9 +231,6 @@ class CPUModel(object):
             # After self.measure_every MCS append new Gini index
             if (mcs + 1) % self.measure_every == 0:
                 self.update_metrics()
-
-        # A function that converts some lists to arrays
-        # self.finalize()
 
     def save(self, filename="default", filepath=os.getcwd()):
         """
@@ -294,7 +287,6 @@ class CPUModel(object):
         print("------------------")
 
 
-# Probando CPUEnsemble de gpt:
 class CPUEnsemble:
     """
     A class representing an ensemble of CPU models.
@@ -368,13 +360,17 @@ class CPUEnsemble:
         all_palma = np.array([model.palma for model in self.models])
         all_n_active = np.array([model.n_active for model in self.models])
         all_liquidity = np.array([model.liquidity for model in self.models])
-        all_num_frozen = np.array([model.n_frozen for model in self.models]) if model.G is not None else None
+        all_num_frozen = np.array([model.n_frozen for model in self.models if model.G is not None]) if any(model.G is not None for model in self.models) else None
+        all_deciles = np.array([model.deciles for model in self.models])
+        all_richest = np.array([model.richest for model in self.models])
 
         mean_gini = np.mean(all_gini, axis=0)
         mean_palma = np.mean(all_palma, axis=0)
         mean_n_active = np.mean(all_n_active, axis=0)
         mean_liquidity = np.mean(all_liquidity, axis=0)
         mean_num_frozen = np.mean(all_num_frozen, axis=0) if all_num_frozen is not None else None
+        mean_deciles = np.mean(all_deciles, axis=0)
+        mean_richest = np.mean(all_richest, axis=0)
 
         if std:
             std_gini = np.std(all_gini, axis=0)
@@ -382,6 +378,8 @@ class CPUEnsemble:
             std_n_active = np.std(all_n_active, axis=0)
             std_liquidity = np.std(all_liquidity, axis=0)
             std_num_frozen = np.std(all_num_frozen, axis=0) if all_num_frozen is not None else None
+            std_deciles = np.std(all_deciles, axis=0)
+            std_richest = np.std(all_richest, axis=0)
 
             return {
                 "mean_gini": mean_gini,
@@ -389,11 +387,15 @@ class CPUEnsemble:
                 "mean_n_active": mean_n_active,
                 "mean_liquidity": mean_liquidity,
                 "mean_num_frozen": mean_num_frozen,
+                "mean_deciles": mean_deciles,
+                "mean_richest": mean_richest,
                 "std_gini": std_gini,
                 "std_palma": std_palma,
                 "std_n_active": std_n_active,
                 "std_liquidity": std_liquidity,
                 "std_num_frozen": std_num_frozen,
+                "std_deciles": std_deciles,
+                "std_richest": std_richest,                
             }
 
         else:
@@ -403,6 +405,8 @@ class CPUEnsemble:
                 "mean_n_active": mean_n_active,
                 "mean_liquidity": mean_liquidity,
                 "mean_num_frozen": mean_num_frozen,
+                "mean_deciles": mean_deciles,
+                "mean_richest": mean_richest,
             }
 
 
