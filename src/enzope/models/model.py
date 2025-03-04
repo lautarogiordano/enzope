@@ -188,7 +188,11 @@ class CPUModel(object):
         self.deciles.append(measures.deciles(self.w))
         self.richest.append(np.max(self.w))
 
-    def run(self, steps, verbose=False):  # sourcery skip: remove-unnecessary-else
+    def update_risks(self, func, **kwargs):
+        """Update risks of the agents."""
+        self.r = func(self.w, **kwargs)
+
+    def run(self, steps, verbose=False, upd_r_func=None, upd_r_kwargs=None):  # sourcery skip: remove-unnecessary-else
         """
         Main MC loop
 
@@ -219,6 +223,10 @@ class CPUModel(object):
                     if self.w[loser] >= dw:
                         self.w[winner] += dw
                         self.w[loser] -= dw
+
+            # Update risks if needed
+            if upd_r_func is not None:
+                self.update_risks(upd_r_func, **upd_r_kwargs)
 
             # After self.update_w update weights
             if self.G and mcs % self.update_w == 0:
