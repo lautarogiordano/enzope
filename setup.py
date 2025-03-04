@@ -17,7 +17,7 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 setup(
    name="enzope",  # Required
 
-   version="0.0.45",  # Required
+   version="0.0.48",  # Required
    
    description="Agent based modelling in complex networks",
    

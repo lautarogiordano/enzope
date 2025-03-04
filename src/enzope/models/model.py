@@ -188,11 +188,11 @@ class CPUModel(object):
         self.deciles.append(measures.deciles(self.w))
         self.richest.append(np.max(self.w))
 
-    def update_risks(self, func, **kwargs):
+    def update_risks(self, upd_r_func, **upd_r_kwargs):
         """Update risks of the agents."""
-        self.r = func(self.w, **kwargs)
+        self.r = upd_r_func(self.w, **upd_r_kwargs)
 
-    def run(self, steps, verbose=False, upd_r_func=None, upd_r_kwargs=None):  # sourcery skip: remove-unnecessary-else
+    def run(self, steps, verbose=False, upd_r_func=None, **upd_r_kwargs):  # sourcery skip: remove-unnecessary-else
         """
         Main MC loop
 
